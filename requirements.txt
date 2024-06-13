@@ -4,7 +4,7 @@ Django==4.2.13
 # MySQL 데이터베이스 어댑터 (MySQL 데이터베이스 사용을 위해)
 mysqlclient==2.2.4
 
-
+uWSGI==2.0.26
 # # Django REST 프레임워크 (API 구축을 위해)
 # djangorestframework==3.12.4
 
@@ -36,4 +36,7 @@ mysqlclient==2.2.4
 
 # # django-debug-toolbar (디버깅을 위해, 개발 환경에서만)
 # django-debug-toolbar==3.2.2
+
+
+
 
