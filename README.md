@@ -142,14 +142,26 @@ server {
 
 ### | (배포 설정)
 
+- nginx.conf user 설정 변경
+
 ```
+/etc/nginx/nginx.conf
+
+>>
 user ubuntu;
 #user nobody;
 #user root;
-.
-.
-.
+```
 
+- sites-available/ecotour 에 server 구성 설정
+
+```
+vi /etc/nginx/sites-available/ecotour
+```
+
+아래 내용 작성
+
+```
 # Server block for uwsgi application and static/media files
 server {
     listen 8000;
@@ -203,6 +215,21 @@ server {
 }
 ```
 
+- 심볼릭 링크 연결
+
+```
+sudo ln -s /etc/nginx/sites-available/ecotour /etc/nginx/sites-enabled/
+```
+
+- default 구성 포트 변경(80 -> 8080)
+
+```
+sudo vi /etc/nginx/sites-available/default
+>>
+listen 8080 default_server;
+listen [::]:8080 default_server;
+```
+
 <br>
 
 ---
@@ -210,6 +237,13 @@ server {
 <br>
 
 ## 🔍 서버 실행 방법
+
+### 0. /BACK-END/ecotour 하위에 디렉토리 생성 (존재하지 않을 경우)
+
+```
+/ecotour/logs<br>
+/ecotour/media
+```
 
 ### 1. app static 모아 정적파일 생성
 
