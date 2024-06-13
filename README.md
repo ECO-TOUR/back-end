@@ -60,24 +60,26 @@ sudo nginx -t
 >>  /opt/homebrew/etc/nginx/nginx.conf
 ```
 
-- nginx.conf 접근  
-  (etc 하위로 경로 수정 필요)
+- nginx.conf 수정
+
+### | (로컬 설정)
+
+1. user (ecotour 소유자) 설정과<br>
+   다른 user 주석처리
+2. 서버 설정 추가(80: proxy port / 8000: WAS port)<br>
+   베이스 경로 설정 (자신 환경의 디렉토리 경로로 변경)<br>
+   set $base_path /Users/jinho/Dev/aivlekakao/back-end/ecotour;
+   - 주의<br>
+     #error_log는 $base_path가 적용되지 않게 내부 설정되어 있어서 주석처리
+
+<br>
+- nginx.conf 에 구성 설정
 
 ```
 vi /opt/homebrew/etc/nginx/nginx.conf
 ```
 
-- nginx.conf 수정
-
-1. user (ecotour 소유자) 설정과<br>
-   다른 user 주석처리
-2. 서버 설정 추가(80: proxy port / 8000: WAS port)<br>
-   베이스 경로 수정<br>
-   set $base_path /Users/jinho/Dev/aivlekakao/back-end/ecotour;
-   - 주의<br>
-     #error_log는 $base_path가 적용되지 않게 내부 설정되어 있어서 주석처리
-
-### | (로컬 설정)
+아래 내용 추가
 
 ```
 user jinho staff;
@@ -145,7 +147,7 @@ server {
 - nginx.conf user 설정 변경
 
 ```
-/etc/nginx/nginx.conf
+vi /etc/nginx/nginx.conf
 
 >>
 user ubuntu;
