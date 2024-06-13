@@ -243,7 +243,7 @@ listen [::]:8080 default_server;
 ### 0. /BACK-END/ecotour 하위에 디렉토리 생성 (존재하지 않을 경우)
 
 ```
-/ecotour/logs<br>
+/ecotour/logs
 /ecotour/media
 ```
 
