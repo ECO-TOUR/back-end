@@ -73,7 +73,10 @@ WSGI_APPLICATION = "mysite.wsgi.application"
 
 # Database
 # https://docs.djangoproject.com/en/4.2/ref/settings/#databases
-from decouple import config
+
+from decouple import Config, Csv
+
+config = Config()
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
