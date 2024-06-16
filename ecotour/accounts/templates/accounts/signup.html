@@ -1,13 +1,15 @@
 <!DOCTYPE html>
 <html>
   <head>
-    <title>Sign Up</title>
+    <title>Signup</title>
+    {% load static %}
+    <script src="{% static 'accounts/js/accounts.js' %}"></script>
   </head>
   <body>
-    <h2>Sign Up</h2>
+    <h2>Signup</h2>
     <form method="post">
       {% csrf_token %} {{ form.as_p }}
-      <button type="submit">Sign Up</button>
+      <button type="submit">Signup</button>
     </form>
   </body>
 </html>
