@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Logout</title>
+    {% load static %}
+    <script>
+      // Remove tokens from localStorage
+      localStorage.removeItem('access_token');
+      localStorage.removeItem('refresh_token');
+      // Redirect to login page or home page after clearing tokens
+      window.location.href = '/';
+    </script>
+  </head>
+  <body>
+    <h2>Logging out...</h2>
+  </body>
+</html>
