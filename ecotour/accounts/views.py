@@ -66,7 +66,15 @@ def login_view(request):
 
 
 def logout_view(request):
-    RefreshTokenModel.objects.filter(user=request.user).delete()
+    # RefreshTokenModel.objects.filter(user=request.user).delete()
+    refresh_token = request.COOKIES.get("refresh")
+    if refresh_token:
+        try:
+            token_instance = RefreshTokenModel.objects.get(token=refresh_token)
+            token_instance.blacklist()
+        except RefreshTokenModel.DoesNotExist:
+            pass
+
     logout(request)
     response = redirect("/")
     response.delete_cookie("access")
