@@ -5,6 +5,11 @@ from .models import RefreshTokenModel
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.urls import reverse
 from django.conf import settings
+from rest_framework import status
+from rest_framework.response import Response
+from rest_framework.views import APIView
+from .serializers import LoginSerializer
+
 
 User = get_user_model()
 
@@ -82,3 +87,19 @@ def logout_view(request):
     response.delete_cookie("access")
     response.delete_cookie("refresh")
     return response
+
+
+class LoginAPIView(APIView):
+    def post(self, request, *args, **kwargs):
+        serializer = LoginSerializer(data=request.data)
+        if serializer.is_valid():
+            user = serializer.validated_data["user"]
+            login(request, user)
+            refresh = RefreshToken.for_user(user)
+            return Response(
+                {
+                    "refresh": str(refresh),
+                    "access": str(refresh.access_token),
+                }
+            )
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
