@@ -31,8 +31,14 @@ environ.Env.read_env(env_file=env_path)
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = env("SECRET_KEY")
 
+
+# Define an environment variable to distinguish between development and production
+ENVIRONMENT = env("DJANGO_ENVIRONMENT")
+
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = ENVIRONMENT == "development"
+# DEBUG = True
+
 
 ALLOWED_HOSTS = ["*"]
 
@@ -87,23 +93,23 @@ WSGI_APPLICATION = "config.wsgi.application"
 # Database
 # https://docs.djangoproject.com/en/4.2/ref/settings/#databases
 
-# DATABASES = {
-#     "default": {
-#         "ENGINE": "django.db.backends.sqlite3",
-#         "NAME": BASE_DIR / "db.sqlite3",
-#     }
-# }
-
 DATABASES = {
     "default": {
-        "ENGINE": "django.db.backends.mysql",  # 고정
-        "NAME": env("DATABASE_NAME"),  # DB 이름
-        "USER": env("DATABASE_USER"),  # 계정
-        "PASSWORD": env("DATABASE_PW"),  # 암호
-        "HOST": env("DATABASE_HOST"),  # IP
-        "PORT": "3306",  # default
+        "ENGINE": "django.db.backends.sqlite3",
+        "NAME": BASE_DIR / "db.sqlite3",
     }
 }
+
+# DATABASES = {
+#     "default": {
+#         "ENGINE": "django.db.backends.mysql",  # 고정
+#         "NAME": env("DATABASE_NAME"),  # DB 이름
+#         "USER": env("DATABASE_USER"),  # 계정
+#         "PASSWORD": env("DATABASE_PW"),  # 암호
+#         "HOST": env("DATABASE_HOST"),  # IP
+#         "PORT": "3306",  # default
+#     }
+# }
 
 # Password validation
 # https://docs.djangoproject.com/en/4.2/ref/settings/#auth-password-validators
@@ -139,8 +145,13 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/4.2/howto/static-files/
 
-STATIC_URL = "static/"
-STATIC_ROOT = os.path.join(BASE_DIR, "static")
+STATIC_URL = "/static/"  # URL 경로는 슬래시로 시작하고 끝나야 합니다.
+STATIC_ROOT = os.path.join(
+    BASE_DIR, "staticfiles"
+)  # collectstatic으로 모아놓을 디렉토리
+STATICFILES_DIRS = [
+    os.path.join(BASE_DIR, "static"),  # 프로젝트 수준의 static 디렉토리
+]
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/4.2/ref/settings/#default-auto-field
@@ -161,7 +172,7 @@ REST_FRAMEWORK = {
 SIMPLE_JWT = {
     "ACCESS_TOKEN_LIFETIME": timedelta(minutes=5),
     "REFRESH_TOKEN_LIFETIME": timedelta(days=1),
-    "ROTATE_REFRESH_TOKENS": True,
+    "ROTATE_REFRESH_TOKENS": False,
     "BLACKLIST_AFTER_ROTATION": True,
     "AUTH_HEADER_TYPES": ("Bearer",),
 }

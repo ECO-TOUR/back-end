@@ -8,8 +8,10 @@ from datetime import timedelta
 class RefreshTokenModel(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     token = models.CharField(max_length=255, unique=True)
+    jti = models.CharField(max_length=36, unique=True)  # JTI 필드 추가
     created_at = models.DateTimeField(auto_now_add=True)
     expires_at = models.DateTimeField()
+    blacklisted = models.BooleanField(default=False)
 
     def __str__(self):
         return self.token
@@ -18,6 +20,13 @@ class RefreshTokenModel(models.Model):
     def create_token(user):
         refresh = RefreshToken.for_user(user)
         token_instance = RefreshTokenModel.objects.create(
-            user=user, token=str(refresh), expires_at=timezone.now() + refresh.lifetime
+            user=user,
+            token=str(refresh),
+            jti=refresh["jti"],
+            expires_at=timezone.now() + refresh.lifetime,
         )
         return token_instance
+
+    def blacklist(self):
+        self.blacklisted = True
+        self.save()
