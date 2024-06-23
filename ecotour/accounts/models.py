@@ -2,7 +2,15 @@ from django.conf import settings
 from django.db import models
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.utils import timezone
-from datetime import timedelta
+from django.contrib.auth.models import AbstractUser
+
+
+class CustomUser(AbstractUser):
+    profile_photo = models.CharField(max_length=255)
+    nickname = models.CharField(max_length=255, unique=True)
+
+    def __str__(self):
+        return self.username
 
 
 class RefreshTokenModel(models.Model):

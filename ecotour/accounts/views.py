@@ -1,10 +1,12 @@
 from django.shortcuts import render, redirect
-from django.contrib.auth import authenticate, login, logout
+from django.contrib.auth import authenticate, login, logout, get_user_model
 from .forms import SignUpForm, LoginForm
 from .models import RefreshTokenModel
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.urls import reverse
 from django.conf import settings
+
+User = get_user_model()
 
 
 def signup_view(request):
