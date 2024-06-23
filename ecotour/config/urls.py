@@ -15,10 +15,10 @@ Including another URLconf
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
 
-from django.contrib import admin
-from django.urls import path, include
-from django.shortcuts import render
 from common.decorators import jwt_required
+from django.contrib import admin
+from django.shortcuts import render
+from django.urls import include, path
 
 
 @jwt_required
@@ -26,8 +26,4 @@ def index(request):
     return render(request, "index.html")
 
 
-urlpatterns = [
-    path("admin/", admin.site.urls),
-    path("", index, name="index"),
-    path("accounts/", include("accounts.urls")),
-]
+urlpatterns = [path("admin/", admin.site.urls), path("", index, name="index"), path("accounts/", include("accounts.urls"))]
