@@ -1,10 +1,11 @@
-from django.shortcuts import render, redirect
-from django.contrib.auth import authenticate, login, logout, get_user_model
-from .forms import SignUpForm, LoginForm
-from .models import RefreshTokenModel
-from rest_framework_simplejwt.tokens import RefreshToken
-from django.urls import reverse
 from django.conf import settings
+from django.contrib.auth import authenticate, get_user_model, login, logout
+from django.shortcuts import redirect, render
+from django.urls import reverse
+from rest_framework_simplejwt.tokens import RefreshToken
+
+from .forms import LoginForm, SignUpForm
+from .models import RefreshTokenModel
 
 User = get_user_model()
 
@@ -45,20 +46,8 @@ def login_view(request):
 
                 # Set the JWT token in the cookies
                 secure_cookie = settings.ENVIRONMENT == "production"
-                response.set_cookie(
-                    "access",
-                    access_token,
-                    httponly=True,
-                    secure=secure_cookie,
-                    samesite="Lax",
-                )
-                response.set_cookie(
-                    "refresh",
-                    str(refresh),
-                    httponly=True,
-                    secure=secure_cookie,
-                    samesite="Lax",
-                )
+                response.set_cookie("access", access_token, httponly=True, secure=secure_cookie, samesite="Lax")
+                response.set_cookie("refresh", str(refresh), httponly=True, secure=secure_cookie, samesite="Lax")
                 return response
             else:
                 form.add_error(None, "Invalid username or password")
