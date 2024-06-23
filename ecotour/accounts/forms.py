@@ -1,14 +1,25 @@
 from django import forms
-from django.contrib.auth.models import User
+from .models import CustomUser
 from django.contrib.auth.forms import UserCreationForm
 
 
 class SignUpForm(UserCreationForm):
     email = forms.EmailField(max_length=200, help_text="Required")
+    profile_photo = forms.CharField(
+        max_length=255, required=False  # Set profile_photo as not required
+    )
+    nickname = forms.CharField(max_length=255, required=True)
 
     class Meta:
-        model = User
-        fields = ("username", "email", "password1", "password2")
+        model = CustomUser
+        fields = (
+            "username",
+            "email",
+            "profile_photo",
+            "nickname",
+            "password1",
+            "password2",
+        )
 
     def clean_email(self):
         email = self.cleaned_data.get("email")
