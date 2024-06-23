@@ -13,12 +13,24 @@ class Test1View(APIView):
         serializer = BannerSerializer(banner_list, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
     
-def test2(request):
-    user_list=User.objects.all()
-    response_content = ""
-    for u in user_list:
-        response_content+=u.user_nickname+" "
-    return HttpResponse(response_content)
+# 모든 유저가 쓴 post를 별명과 함께 출력하기
+# <내가 쓴 글>
+# def test2(request):
+#     user_list=User.objects.all()
+#     response_content = ""
+#     for u in user_list:
+#         response_content+=u.user_nickname+" "
+        
+#     post=Post.objects.filter(user_id=user_list.first().user_id)
+#     for p in post:
+#         response_content+=p.post_text
+#     return HttpResponse(response_content)
+
+class Test2View(APIView):
+    def get(self, request, id, format=None):
+        post_list = Post.objects.filter(user_id=id)
+        serializer = PostSerializer(post_list, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
 
 
 
@@ -92,6 +104,7 @@ def search(request):
         posts_data = list(posts.values())
         keyword_data = list(keyword_list.values())
 
+        return HttpResponse(tour_place)
         return HttpResponse(posts_data+keyword_data)
    
     
@@ -101,7 +114,7 @@ def best(request):
     post_list=post_list[:3]
     context=""
     for p in post_list:
-        context+="socre: " +str(p.post_score)+"text: "+p.post_text
+        context+="socre: " +str(p.post_score)+"text: "+p.post_text+" \n"
         
     return HttpResponse(context)
 
