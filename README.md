@@ -312,4 +312,71 @@ uwsgi --ini uwsgi.ini
 - 개발 서버 http://localhost <br>
 - 배포 서버 https://{domain_ip | domain_url}
 
+<br>
+
 ---
+
+<br>
+
+## 🖍️ pre-commit config 세팅:
+
+> pre-commit 훅이 git add, git commit 할 때,<br>
+> 자동으로 코드 스타일과 형식을 유지
+
+### 0. 가상환경 이동
+
+BaseDir= {BACK-END}
+
+```
+source ./venv/bin/activate
+```
+
+### 1. 라이브러리 설치
+
+```
+pip install pre-commit
+```
+
+### 2. pre-commit 훅 설치
+
+```
+pre-commit install
+```
+
+### 3. 훅 설정 확인하기
+
+```
+vi .git/hooks/pre-commit
+
+>>> 아래 파이썬 경로가 가상환경 경로로 되어 있는지 확인!
+macOS:
+INSTALL_PYTHON=/Users/{username}/Dev/aivlekakao/back-end/venv/bin/python3.9
+windowOS:
+INSTALL_PYTHON=C:\Users\{username}\Dev\aivlekakao\back-end\venv\Scripts\python.exe
+
+
+>>> 경로가 다르다면, 환경변수에 자신의 conda 환경 python 경로 추가하기
+macOS:
+export PATH="/Users/{username}/Dev/aivlekakao/back-end/venv/bin/:$PATH"
+windowOS:
+변수 이름: SEEDO_PYTHON
+변수 값: C:\Users\{username}\Dev\aivlekakao\back-end\venv\Scripts\python.exe
+
+```
+
+### 3-1. 경로 수정한 경우 pre-commit 환경 초기화
+
+```
+pre-commit uninstall
+pre-commit install
+```
+
+### 4. 작업 후, git add, git commit
+
+> 처음 commit 할 때, pre-commit 세팅 다운로드 - cache 되는 과정이 있어 오래 걸린다.<br><br> > [INFO] This may take a few minutes...<br><br>
+> 차후 반복되는 commit은 빠르게 가능하다.
+
+```
+git add {file}
+git commit -m "{message}"
+```
