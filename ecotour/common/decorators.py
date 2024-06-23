@@ -1,8 +1,9 @@
 from functools import wraps
-from rest_framework_simplejwt.tokens import AccessToken, RefreshToken, TokenError
+
+from django.contrib.auth import get_user_model
 from django.http import HttpResponseRedirect
 from django.urls import reverse
-from django.contrib.auth import get_user_model
+from rest_framework_simplejwt.tokens import AccessToken, RefreshToken, TokenError
 
 User = get_user_model()
 
@@ -33,13 +34,7 @@ def jwt_required(view_func):
 
                 # Set the new access token in cookies
                 response = HttpResponseRedirect(request.get_full_path())
-                response.set_cookie(
-                    "access",
-                    new_access_token,
-                    httponly=True,
-                    secure=False,
-                    samesite="Lax",
-                )
+                response.set_cookie("access", new_access_token, httponly=True, secure=False, samesite="Lax")
                 request.user = user
                 return response
             except TokenError:

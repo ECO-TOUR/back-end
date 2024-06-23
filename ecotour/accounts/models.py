@@ -1,8 +1,8 @@
 from django.conf import settings
-from django.db import models
-from rest_framework_simplejwt.tokens import RefreshToken
-from django.utils import timezone
 from django.contrib.auth.models import AbstractUser
+from django.db import models
+from django.utils import timezone
+from rest_framework_simplejwt.tokens import RefreshToken
 
 
 class CustomUser(AbstractUser):
@@ -28,10 +28,7 @@ class RefreshTokenModel(models.Model):
     def create_token(user):
         refresh = RefreshToken.for_user(user)
         token_instance = RefreshTokenModel.objects.create(
-            user=user,
-            token=str(refresh),
-            jti=refresh["jti"],
-            expires_at=timezone.now() + refresh.lifetime,
+            user=user, token=str(refresh), jti=refresh["jti"], expires_at=timezone.now() + refresh.lifetime
         )
         return token_instance
 
