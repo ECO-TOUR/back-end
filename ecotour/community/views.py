@@ -37,6 +37,7 @@ class Test2View(APIView):
 from django.http import JsonResponse
 from .models import TourPlace, TourPlace_has_TourKeyword, TourKeyword
 
+#관광지에 연결된 키워드 출력
 def test3(request):
     # Retrieve all TourPlace objects
     t_list = TourPlace.objects.all()
@@ -53,10 +54,14 @@ def test3(request):
     # Filter TourKeyword based on keyword_ids
     keyword_list = TourKeyword.objects.filter(keyword_id__in=keyword_ids)
     
+    a=""
     # Prepare data to return as JSON
-    keyword_data = list(keyword_list.values())
+    for k in keyword_list:
+        a+=str(k.keyword_id)+" : "
+        a+=k.keyword_name
+    # keyword_data = list(keyword_list.values())
 
-    return HttpResponse(keyword_data)
+    return HttpResponse(a)
 
 
 
@@ -119,7 +124,7 @@ def best(request):
     return HttpResponse(context)
 
 
-# views.py
+
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
