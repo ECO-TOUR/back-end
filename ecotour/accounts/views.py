@@ -1,10 +1,13 @@
-from django.shortcuts import render, redirect
-from django.contrib.auth import authenticate, login, logout
-from django.contrib.auth.forms import AuthenticationForm
-from .forms import SignUpForm, LoginForm
-from django.contrib.auth.models import User
-from .models import RefreshTokenModel
+from django.conf import settings
+from django.contrib.auth import authenticate, get_user_model, login, logout
+from django.shortcuts import redirect, render
+from django.urls import reverse
 from rest_framework_simplejwt.tokens import RefreshToken
+
+from .forms import LoginForm, SignUpForm
+from .models import RefreshTokenModel
+
+User = get_user_model()
 
 
 def signup_view(request):
@@ -35,20 +38,17 @@ def login_view(request):
                 # Issue JWT token
                 token_instance = RefreshTokenModel.create_token(user)
 
-                # Render the login_success.html template
-                response = render(
-                    request,
-                    "accounts/login_success.html",
-                    {
-                        "refresh": token_instance.token,
-                        "access": str(RefreshToken(token_instance.token).access_token),
-                    },
-                )
-                response["Content-Security-Policy"] = (
-                    "script-src 'self' 'unsafe-inline'"
-                )
+                refresh = token_instance.token
+                access_token = (str(RefreshToken(token_instance.token).access_token),)
+
+                # Create response to redirect to the main page
+                response = redirect(reverse("index"))
+
+                # Set the JWT token in the cookies
+                secure_cookie = settings.ENVIRONMENT == "production"
+                response.set_cookie("access", access_token, httponly=True, secure=secure_cookie, samesite="Lax")
+                response.set_cookie("refresh", str(refresh), httponly=True, secure=secure_cookie, samesite="Lax")
                 return response
-                # return redirect("/")
             else:
                 form.add_error(None, "Invalid username or password")
     else:
@@ -57,7 +57,17 @@ def login_view(request):
 
 
 def logout_view(request):
-    RefreshTokenModel.objects.filter(user=request.user).delete()
+    # RefreshTokenModel.objects.filter(user=request.user).delete()
+    refresh_token = request.COOKIES.get("refresh")
+    if refresh_token:
+        try:
+            token_instance = RefreshTokenModel.objects.get(token=refresh_token)
+            token_instance.blacklist()
+        except RefreshTokenModel.DoesNotExist:
+            pass
+
     logout(request)
-    return render(request, "accounts/logout.html")
-    # return redirect("/")
+    response = redirect("/")
+    response.delete_cookie("access")
+    response.delete_cookie("refresh")
+    return response

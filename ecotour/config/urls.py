@@ -15,9 +15,12 @@ Including another URLconf
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
 
+from common.decorators import jwt_required
 from django.contrib import admin
+from django.shortcuts import render
 from django.urls import path, include
 from django.shortcuts import render
+
 from django.urls import path, include
 
 from rest_framework import permissions
@@ -25,6 +28,7 @@ from drf_yasg.views import get_schema_view
 from drf_yasg       import openapi
 
 
+@jwt_required
 def index(request):
     return render(request, "index.html")
 
@@ -46,10 +50,10 @@ urlpatterns = [
     path('swagger(?P<format>\.json|\.yaml)', schema_view.without_ui(cache_timeout=0), name='schema-json'),
     path('swagger', schema_view.with_ui('swagger', cache_timeout=0), name='schema-swagger-ui'),
     path('redoc', schema_view.with_ui('redoc', cache_timeout=0), name='schema-redoc-v1'),
-    path("admin/", admin.site.urls),
-    
-    path("", index),
-    path("accounts/", include("accounts.urls")),
+    path("admin/", admin.site.urls), 
+    path("", index, name="index"), 
+    path("accounts/", include("accounts.urls"))
+
     path("community/", include("community.urls")),
 ]
 
