@@ -1,12 +1,17 @@
 from django.urls import path
-from .import views
+
+from . import views
 from .views import *
+
 urlpatterns = [
-    path('api/test1/', Test1View.as_view(), name='api_test1'),
-    path('test2/<int:id>/',Test2View.as_view(), name='test2'),
-    path('test3/', views.test3),
-    path('test4/', views.test4),
-    path('search/', views.search),
-    path('best/', views.best),
-    path('example/', ExampleView.as_view(), name='example'),
+    path("api/test1/", Test1View.as_view(), name="api_test1"),
+    path("test2/<int:id>/", Test2View.as_view(), name="api_test2"),
+    path("test3/", views.test3),
+    path("test4/", views.test4),
+    path("search/", views.search),
+    path("best/", views.best),
+    path("write/", WriteView.as_view(), name="api_write"),
+    path("modify/", ModifyView.as_view(), name="api_modify"),
+    path("delete/<int:id>/", DeleteView.as_view(), name="api_delete"),
+    # path('example/', ExampleView.as_view(), name='example'),
 ]

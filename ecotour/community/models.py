@@ -10,9 +10,8 @@ class TourPlace_has_TourKeyword(models.Model):
         return f"{self.tour_id} - {self.keyword}"
 
     class Meta:
-        db_table ='TourPlace_has_TourKeyword'
-        
-from django.db import models
+        db_table = "TourPlace_has_TourKeyword"
+
 
 # Banner 모델
 class Banner(models.Model):
@@ -24,10 +23,11 @@ class Banner(models.Model):
     banner_url = models.URLField()
 
     class Meta:
-        db_table = 'Banner'
+        db_table = "Banner"
 
     def __str__(self):
         return self.banner_title
+
 
 # TourPlace 모델
 class TourPlace(models.Model):
@@ -39,17 +39,18 @@ class TourPlace(models.Model):
     tour_info = models.TextField()
     tour_img = models.TextField()
     tour_viewcnt = models.IntegerField(default=0)
-    tour_viewcnt_month = models.CharField(max_length=45, default='0')
+    tour_viewcnt_month = models.CharField(max_length=45, default="0")
     tour_summary = models.TextField()
     tour_tel = models.CharField(max_length=45, null=True, blank=True)
     tour_telname = models.CharField(max_length=45, null=True, blank=True)
     tour_title = models.CharField(max_length=45, null=True, blank=True)
 
     class Meta:
-        db_table = 'TourPlace'
+        db_table = "TourPlace"
 
     def __str__(self):
         return self.tour_name
+
 
 # TourKeyword 모델
 class TourKeyword(models.Model):
@@ -57,10 +58,11 @@ class TourKeyword(models.Model):
     keyword_name = models.CharField(max_length=45)
 
     class Meta:
-        db_table = 'TourKeyword'
+        db_table = "TourKeyword"
 
     def __str__(self):
         return self.keyword_name
+
 
 # User 모델
 class User(models.Model):
@@ -72,10 +74,11 @@ class User(models.Model):
     user_nickname = models.CharField(max_length=45, null=True, blank=True)
 
     class Meta:
-        db_table = 'User'
+        db_table = "User"
 
     def __str__(self):
         return self.user_login_id
+
 
 # Preference 모델
 class Preference(models.Model):
@@ -83,10 +86,11 @@ class Preference(models.Model):
     preference_name = models.CharField(max_length=45)
 
     class Meta:
-        db_table = 'Preference'
+        db_table = "Preference"
 
     def __str__(self):
         return self.preference_name
+
 
 # User_has_Preference 모델
 class User_has_Preference(models.Model):
@@ -95,7 +99,8 @@ class User_has_Preference(models.Model):
     preference_id = models.IntegerField()
 
     class Meta:
-        db_table = 'User_has_Preference'
+        db_table = "User_has_Preference"
+
 
 # Likes 모델
 class Likes(models.Model):
@@ -105,9 +110,12 @@ class Likes(models.Model):
     user_id = models.IntegerField()
 
     class Meta:
-        db_table = 'Likes'
+        db_table = "Likes"
+
 
 # Post 모델
+
+
 class Post(models.Model):
     post_id = models.AutoField(primary_key=True)
     post_text = models.TextField(null=True, blank=True)
@@ -118,9 +126,12 @@ class Post(models.Model):
     post_hashtag = models.CharField(max_length=100, null=True, blank=True)
     tour_id = models.IntegerField()
     user_id = models.IntegerField()
+    post_view = models.IntegerField(default=0)
+    last_modified = models.DateTimeField()
 
     class Meta:
-        db_table = 'Post'
+        db_table = "Post"
+
 
 # Notification 모델
 class Notification(models.Model):
@@ -130,7 +141,8 @@ class Notification(models.Model):
     noti_date = models.DateField(null=True, blank=True)
 
     class Meta:
-        db_table = 'Notification'
+        db_table = "Notification"
+
 
 # Log 모델
 class Log(models.Model):
@@ -140,4 +152,4 @@ class Log(models.Model):
     user_id = models.IntegerField()
 
     class Meta:
-        db_table = 'Log'
+        db_table = "Log"
