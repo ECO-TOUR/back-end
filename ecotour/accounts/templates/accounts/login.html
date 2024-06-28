@@ -2,6 +2,25 @@
 <html>
   <head>
     <title>Login</title>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+    <script>
+      function REST_Call(path) {
+        axios
+          .get("http://localhost:8000/accounts" + path, {
+            params: {},
+            withCredentials: true,
+          })
+          .then(({ data }) => {
+            console.log(data);
+            $("#contents").html(JSON.stringify(data));
+          })
+          .catch((err) => {
+            console.log(err);
+            $("#contents").html(JSON.stringify(err));
+          });
+      }
+    </script>
   </head>
   <body>
     <h2>Login</h2>
@@ -11,5 +30,27 @@
     </form>
     <h2>Signup</h2>
     <li><a href="{% url 'accounts:signup' %}">회원가입</a></li>
+
+    <hr />
+
+    <div>
+      <h2>카카오 로그인</h2>
+      <div class="text-center">
+        <a
+          href="{% url 'accounts:authorize_code_kakao' %}?scope=friends,talk_message,openid"
+        >
+          <img
+            src="//k.kakaocdn.net/14/dn/btqCn0WEmI3/nijroPfbpCa4at5EIsjyf0/o.jpg"
+            width="222"
+          /> </a
+        ><br />
+
+        <button onclick="REST_Call('/profile')">프로필 조회</button><br />
+
+        <textarea id="contents" rows="20" cols="100"></textarea><br />
+
+        <button onclick="REST_Call('/logout')">로그아웃</button><br />
+      </div>
+    </div>
   </body>
 </html>
