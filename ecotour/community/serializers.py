@@ -18,4 +18,10 @@ class BannerSerializer(serializers.ModelSerializer):
 class PostSerializer(serializers.ModelSerializer):
     class Meta:
         model = Post
-        fields = ["post_text", "post_score"]
+        fields = ["post_text", "user_id"]
+
+
+class CommentSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Comments
+        fields = ["comments_id", "user_id", "comments"]

@@ -46,7 +46,7 @@ def test3(request):
     tour_ids = [tour.tour_id for tour in t_list]
 
     # Filter TourPlace_has_TourKeyword based on tour_ids
-    place_keyword_list = TourPlace_has_TourKeyword.objects.filter(tour_id__in=tour_ids)
+    place_keyword_list = TourPlace_TourKeyword.objects.filter(tour_id__in=tour_ids)
 
     # Extract keyword_ids from place_keyword_list
     keyword_ids = [pk.keyword_id for pk in place_keyword_list]
@@ -66,7 +66,7 @@ def test3(request):
 
 def test4(request):
     # Query all instances of TourPlace_has_TourKeyword
-    tour_keywords = TourPlace_has_TourKeyword.objects.all()
+    tour_keywords = TourPlace_TourKeyword.objects.all()
 
     # Pass data to the template context
     # context = {"tour_keywords": tour_keywords}
@@ -93,7 +93,7 @@ def search(request):
         tour_ids = [tour_place.tour_id]
 
         # Filter TourPlace_has_TourKeyword based on tour_ids
-        place_keyword_list = TourPlace_has_TourKeyword.objects.filter(tour_id__in=tour_ids)
+        place_keyword_list = TourPlace_TourKeyword.objects.filter(tour_id__in=tour_ids)
 
         # Extract keyword_ids from place_keyword_list
         keyword_ids = [pk.keyword_id for pk in place_keyword_list]
@@ -107,6 +107,17 @@ def search(request):
 
         return HttpResponse(tour_place)
         return HttpResponse(posts_data + keyword_data)
+
+
+def search2(request):
+    # tour = TourPlace_has_TourKeyword.objects.filter(tour_id__in=[1])
+    tour = TourPlace_TourKeyword.objects.filter(placekey_id=2)
+    return HttpResponse(tour)
+
+
+def userpre(request):
+    likes = User_Preference.objects.filter(user=1)
+    return HttpResponse(likes)
 
 
 # 점수 높은 순 top3
@@ -132,7 +143,7 @@ class WriteView(APIView):
         # date = parse_datetime(request.data.get("date"))
         date = request.data.get("date")
         likes = request.data.get("likes", 0)
-        score = request.data.get("score", 0)
+        score = request.data.get("score", 0)  # 5점만점.12345.★★★★☆
         hashtag = request.data.get("hashtag")
         tour_id = request.data.get("tour_id")
         user_id = request.data.get("user_id", 1)  # Change this to the actual user ID handling logic
@@ -189,6 +200,76 @@ class DeleteView(APIView):
         post = Post.objects.filter(post_id=id)
         post.delete()
         return Response(status=status.HTTP_200_OK)
+
+
+# 검색기능
+class SearchView(APIView):
+    def get(self, request, sorttype, text, format=None):
+        # sorttype = 최신순(1) or 좋아요순(2)
+
+        if not text:
+            return Response({"error": "No search text provided."}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Initialize an empty queryset
+        post_queryset = Post.objects.none()
+
+        # Search posts by text in post_text
+        post_queryset |= Post.objects.filter(post_text__icontains=text)
+
+        # Search keywords by text
+        key_list = TourKeyword.objects.filter(keyword_name__icontains=text)
+
+        if key_list.exists():
+            # Get tour places related to found keywords
+            temp_list = TourPlace_TourKeyword.objects.filter(keyword_id__in=key_list)
+
+            if temp_list.exists():
+                # Get all related tour ids
+                tour_ids = [t.tour_id for t in temp_list]
+
+                # Search posts by related tour ids
+                post_queryset |= Post.objects.filter(tour_id__in=tour_ids)
+
+        # Sort posts based on sorttype
+        if sorttype == 1:  # 최신순
+            post_queryset = post_queryset.order_by("-post_date")
+        elif sorttype == 2:  # 좋아요순
+            post_queryset = post_queryset.order_by("-post_likes")
+
+        # Remove duplicates
+        post_queryset = post_queryset.distinct()
+
+        # Serialize the result
+        serializer = PostSerializer(post_queryset, many=True)
+
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+class MyPostView(APIView):
+    def get(self, request, id, format=None):
+        post = Post.objects.filter(user_id=id)
+        serializer = PostSerializer(post, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+# 특정 포스트에 달린 댓글 모두 조회하기
+class CommentsView(APIView):
+    def get(self, request, post_id, format=None):
+        comment = Comments.objects.filter(post_id=post_id)
+        serializer = CommentSerializer(comment, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+class CommentsWriteView(APIView):
+    def post(self, request, format=None):
+        post_id = request.data.get("post_id")
+        user_id = request.data.get("user_id")
+        comments_date = timezone.now()
+        comments = request.data.get("comments")
+        com = Comments.objects.create(user_id=user_id, comments_date=comments_date, comments=comments, post_id=post_id)
+
+        serializer = CommentSerializer(com)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
 
 
 # class ExampleView(APIView):
