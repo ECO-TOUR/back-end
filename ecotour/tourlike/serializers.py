@@ -4,4 +4,4 @@ from community.models import Likes
 class TourPlaceLikeSerializer(serializers.ModelSerializer):
     class Meta:
         model = Likes
-        fields = ['tour_id', 'user_id', 'likes_id', 'likes_date']
+        fields = ['tour_id', 'user_id', 'likes_id', 'like_date']

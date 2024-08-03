@@ -1,12 +1,13 @@
 from django.shortcuts import get_object_or_404, render
 from django.http import JsonResponse
 from django.contrib.auth.decorators import login_required
-from django.contrib.auth.models import User
+from django.contrib.auth import get_user_model
 from community.models import TourPlace, Likes
 from .serializers import TourPlaceLikeSerializer  
 
+User = get_user_model()
 
-@login_required
+# @login_required
 def toggle_like(request, user_id):
     if request.method == 'POST':
         tour_id = request.POST.get('tour_id')
@@ -38,7 +39,7 @@ def toggle_like(request, user_id):
         'error': '요청 메소드는 POST여야 합니다.'
     }, status=400)
 
-@login_required
+# @login_required
 def liked_places(request, user_id):
     user = get_object_or_404(User, id=user_id)
     likes = Likes.objects.filter(user_id=user)
