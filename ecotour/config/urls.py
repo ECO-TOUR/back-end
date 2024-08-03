@@ -26,4 +26,8 @@ def index(request):
     return render(request, "index.html")
 
 
-urlpatterns = [path("admin/", admin.site.urls), path("", index, name="index"), path("accounts/", include("accounts.urls"))]
+urlpatterns = [path("admin/", admin.site.urls), 
+               path("", index, name="index"), 
+               path("accounts/", 
+               path('api/', include('likes.urls')),
+               include("accounts.urls"))]
