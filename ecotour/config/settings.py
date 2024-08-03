@@ -49,17 +49,19 @@ ALLOWED_HOSTS = ["*"]
 
 INSTALLED_APPS = [
     "accounts",
+    "tourlike",
     "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
-    "drf_yasg",
+    # "drf_yasg",
     "rest_framework",
     "rest_framework_simplejwt",
     "community",
     "mainpage",
+    "corsheaders",
 ]
 
 MIDDLEWARE = [
@@ -70,6 +72,8 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    "corsheaders.middleware.CorsMiddleware",
+    "django.middleware.common.CommonMiddleware",
 ]
 
 ROOT_URLCONF = "config.urls"
@@ -161,3 +165,13 @@ SIMPLE_JWT = {
 
 
 AUTH_USER_MODEL = "accounts.CustomUser"
+
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+    # Add more origins as needed
+]
+
+CORS_ALLOW_HEADERS = ["accept", "accept-encoding", "authorization", "content-type", "dnt", "origin", "user-agent", "x-csrftoken", "x-requested-with"]
+
+CORS_ALLOW_METHODS = ["DELETE", "GET", "OPTIONS", "PATCH", "POST", "PUT"]

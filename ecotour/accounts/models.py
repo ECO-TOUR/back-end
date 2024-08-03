@@ -6,8 +6,12 @@ from rest_framework_simplejwt.tokens import RefreshToken
 
 
 class CustomUser(AbstractUser):
-    profile_photo = models.CharField(max_length=255)
+    profile_photo = models.CharField(max_length=255, blank=True, null=True)
     nickname = models.CharField(max_length=255, unique=True)
+    oauth_kakao_access_token = models.CharField(max_length=255, blank=True, null=True)
+    oauth_kakao_refresh_token = models.CharField(max_length=255, blank=True, null=True)
+    oauth_kakao_id_token = models.CharField(max_length=255, blank=True, null=True)
+    oauth_kakao_expires_at = models.DateTimeField(blank=True, null=True)  # Token expiration time
 
     def __str__(self):
         return self.username
