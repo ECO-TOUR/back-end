@@ -1,7 +1,5 @@
-from django.conf import settings
+from django.contrib.auth import get_user_model
 from django.db import models
-from django.utils import timezone
-from rest_framework_simplejwt.tokens import RefreshToken
 
 """
 class TourPlace_has_TourKeyword(models.Model):
@@ -135,60 +133,61 @@ class User(models.Model):
 """
 # accounts/models.py
 
+# 충돌 코드
+CustomUser = get_user_model()
+# class CustomUser(models.Model):
+#     user_id = models.AutoField(primary_key=True)
+#     id = models.CharField(max_length=45)
+#     password = models.CharField(max_length=45)
+#     last_login = models.DateTimeField()
+#     is_superuser = models.BooleanField()
+#     username = models.CharField(max_length=150)
+#     first_name = models.CharField(max_length=150)
+#     last_name = models.CharField(max_length=150)
+#     email = models.CharField(max_length=254)
+#     is_staff = models.BooleanField()
+#     is_active = models.BooleanField()
+#     date_joined = models.DateTimeField()
+#     profilephoto = models.TextField(null=True, blank=True)
+#     nickname = models.CharField(max_length=45, null=True, blank=True)
 
-class CustomUser(models.Model):
-    user_id = models.AutoField(primary_key=True)
-    id = models.CharField(max_length=45)
-    password = models.CharField(max_length=45)
-    last_login = models.DateTimeField()
-    is_superuser = models.BooleanField()
-    username = models.CharField(max_length=150)
-    first_name = models.CharField(max_length=150)
-    last_name = models.CharField(max_length=150)
-    email = models.CharField(max_length=254)
-    is_staff = models.BooleanField()
-    is_active = models.BooleanField()
-    date_joined = models.DateTimeField()
-    profilephoto = models.TextField(null=True, blank=True)
-    nickname = models.CharField(max_length=45, null=True, blank=True)
+#     class Meta:
+#         db_table = "accounts_customuser"
 
-    class Meta:
-        db_table = "accounts_customuser"
-
-    def __str__(self):
-        return self.username
+#     def __str__(self):
+#         return self.username
 
 
 # accounts/models.py
 
+RefreshTokenModel = get_user_model()
+# class RefreshTokenModel(models.Model):
+#     token_id = models.AutoField(primary_key=True)
+#     token = models.CharField(max_length=255, unique=True)
+#     jti = models.CharField(max_length=36, unique=True)  # JTI 필드 추가
+#     created_at = models.DateTimeField(auto_now_add=True)
+#     expires_at = models.DateTimeField()
+#     blacklisted = models.BooleanField(default=False)
+#     # user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='refreshuser')
+#     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
 
-class RefreshTokenModel(models.Model):
-    token_id = models.AutoField(primary_key=True)
-    token = models.CharField(max_length=255, unique=True)
-    jti = models.CharField(max_length=36, unique=True)  # JTI 필드 추가
-    created_at = models.DateTimeField(auto_now_add=True)
-    expires_at = models.DateTimeField()
-    blacklisted = models.BooleanField(default=False)
-    # user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='refreshuser')
-    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+#     class Meta:
+#         db_table = "accounts_refreshtokenmodel"
 
-    class Meta:
-        db_table = "accounts_refreshtokenmodel"
+#     def __str__(self):
+#         return self.token
 
-    def __str__(self):
-        return self.token
+#     @staticmethod
+#     def create_token(user):
+#         refresh = RefreshToken.for_user(user)
+#         token_instance = RefreshTokenModel.objects.create(
+#             user=user, token=str(refresh), jti=refresh["jti"], expires_at=timezone.now() + refresh.lifetime
+#         )
+#         return token_instance
 
-    @staticmethod
-    def create_token(user):
-        refresh = RefreshToken.for_user(user)
-        token_instance = RefreshTokenModel.objects.create(
-            user=user, token=str(refresh), jti=refresh["jti"], expires_at=timezone.now() + refresh.lifetime
-        )
-        return token_instance
-
-    def blacklist(self):
-        self.blacklisted = True
-        self.save()
+#     def blacklist(self):
+#         self.blacklisted = True
+#         self.save()
 
 
 # Preference 모델
