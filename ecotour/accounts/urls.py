@@ -3,6 +3,8 @@ from django.urls import path
 from .views import (
     LoginAPIView,
     LogoutAPIView,
+    OauthKaKaoLoginAPIView,
+    OauthKaKaoLogoutAPIView,
     SignUpAPIView,
     authorize_code_kakao,
     login_view,
@@ -24,5 +26,7 @@ urlpatterns = [
     path("authorize/code/kakao/", authorize_code_kakao, name="authorize_code_kakao"),
     path("oauth/kakao/login/", oauth_kakao_login_view, name="oauth_kakao_login"),
     path("oauth/kakao/logout/", oauth_kakao_logout_view, name="oauth_kakao_logout"),
+    path("api/oauth/kakao/login/", OauthKaKaoLoginAPIView.as_view(), name="api_oauth_kakao_login"),
+    path("api/oauth/kakao/logout/", OauthKaKaoLogoutAPIView.as_view(), name="api_oauth_kakao_logout"),
     path("profile/", profile, name="profile"),
 ]
