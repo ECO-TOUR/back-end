@@ -292,8 +292,6 @@ python manage.py collectstatic
 
 ### 2. nginx 실행
 
-- 개발 서버
-
 ```
 >>> 개발 서버
 sudo brew services start nginx
