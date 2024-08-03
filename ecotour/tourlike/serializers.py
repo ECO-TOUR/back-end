@@ -1,5 +1,5 @@
 from rest_framework import serializers
-# from .models import Likes 보영 코드
+from community.models import Likes
 
 class TourPlaceLikeSerializer(serializers.ModelSerializer):
     class Meta:

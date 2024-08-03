@@ -1,6 +1,6 @@
 from django.db import models
 from django.contrib.auth.models import User
-# from ecotour.models import TourPlace 보영 db
+from community.models import TourPlace
 import uuid
 
 class Likes(models.Model):

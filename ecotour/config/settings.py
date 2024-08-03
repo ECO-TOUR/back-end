@@ -49,14 +49,14 @@ ALLOWED_HOSTS = ["*"]
 
 INSTALLED_APPS = [
     "accounts",
-    "tourlike"
+    "tourlike",
     "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
-    "drf_yasg",
+   # "drf_yasg",
     "rest_framework",
     "rest_framework_simplejwt",
     "community",

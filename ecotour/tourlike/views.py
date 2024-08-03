@@ -2,7 +2,7 @@ from django.shortcuts import get_object_or_404, render
 from django.http import JsonResponse
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
-# from .models import TourPlace, Likes 보영 db
+from community.models import TourPlace, Likes
 from .serializers import TourPlaceLikeSerializer  
 
 
