@@ -1,4 +1,4 @@
-from django.http import HttpResponse
+from django.http import JsonResponse
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from rest_framework import status
@@ -7,14 +7,6 @@ from rest_framework.views import APIView
 
 from .models import *
 from .serializers import *
-
-
-class Test1View(APIView):
-    def get(self, request, format=None):
-        banner_list = Banner.objects.all()
-        serializer = BannerSerializer(banner_list, many=True)
-        return Response(serializer.data, status=status.HTTP_200_OK)
-
 
 # 모든 유저가 쓴 post를 별명과 함께 출력하기
 # <내가 쓴 글>
@@ -30,15 +22,13 @@ class Test1View(APIView):
 #     return HttpResponse(response_content)
 
 
-class Test2View(APIView):
-    def get(self, request, id, format=None):
-        post_list = Post.objects.filter(user_id=id)
-        serializer = PostSerializer(post_list, many=True)
-        return Response(serializer.data, status=status.HTTP_200_OK)
+def postbyid(request, id):
+    post_list = Post.objects.filter(user_id=id)
+    serializer = PostSerializer(post_list, many=True)
+    return JsonResponse(serializer.data, safe=False, status=status.HTTP_200_OK)
 
 
-# 관광지에 연결된 키워드 출력
-def test3(request):
+def tourkeyword(request):
     # Retrieve all TourPlace objects
     t_list = TourPlace.objects.all()
 
@@ -54,31 +44,34 @@ def test3(request):
     # Filter TourKeyword based on keyword_ids
     keyword_list = TourKeyword.objects.filter(keyword_id__in=keyword_ids)
 
-    a = ""
     # Prepare data to return as JSON
-    for k in keyword_list:
-        a += str(k.keyword_id) + " : "
-        a += k.keyword_name
-    # keyword_data = list(keyword_list.values())
+    keyword_data = {k.keyword_id: k.keyword_name for k in keyword_list}
 
-    return HttpResponse(a)
+    return JsonResponse(keyword_data, safe=False)
 
 
-def test4(request):
-    # Query all instances of TourPlace_has_TourKeyword
-    tour_keywords = TourPlace_TourKeyword.objects.all()
+def findkeyword(id):
+    result = TourKeyword.objects.get(keyword_id=id)
+    return result.keyword_name
 
-    # Pass data to the template context
-    # context = {"tour_keywords": tour_keywords}
 
-    a = ""
+def place2keyword(request, id):
+    # Query all instances of TourPlace_TourKeyword
+    tour_keywords = TourPlace_TourKeyword.objects.filter(tour_id=id)
+
+    # Prepare data to return as JSON
+    place_keyword_data = []
     for t in tour_keywords:
-        a += str(t.placekey_id)
-    # Render the template with context data
-    return HttpResponse(a)
+        place_keyword_data.append(
+            {"placekey_id": t.placekey_id, "tour_id": t.tour_id, "keyword_id": t.keyword_id, "keyword": findkeyword(t.keyword_id)}
+        )
+
+    return JsonResponse(place_keyword_data, safe=False)
 
 
 # 커뮤니티에서 장소 조회하면, 관련 포스트 출력
+
+
 def search(request):
     place_name = request.GET.get("place", None)
 
@@ -89,10 +82,10 @@ def search(request):
         # Get posts related to the filtered tour place
         posts = Post.objects.filter(tour_id=tour_place.tour_id)
 
-        # Extract tour_ids from t_list
+        # Extract tour_ids from the filtered tour place
         tour_ids = [tour_place.tour_id]
 
-        # Filter TourPlace_has_TourKeyword based on tour_ids
+        # Filter TourPlace_TourKeyword based on tour_ids
         place_keyword_list = TourPlace_TourKeyword.objects.filter(tour_id__in=tour_ids)
 
         # Extract keyword_ids from place_keyword_list
@@ -102,33 +95,51 @@ def search(request):
         keyword_list = TourKeyword.objects.filter(keyword_id__in=keyword_ids)
 
         # Prepare data to return as JSON
-        posts_data = list(posts.values())
-        keyword_data = list(keyword_list.values())
+        tour_place_data = {
+            "tour_place": {"tour_id": tour_place.tour_id, "tour_name": tour_place.tour_name},
+            "posts": list(posts.values("post_id", "post_text", "post_date")),  # Adjust fields as needed
+            "keywords": list(keyword_list.values("keyword_id", "keyword_name")),  # Adjust fields as needed
+        }
 
-        return HttpResponse(tour_place)
-        return HttpResponse(posts_data + keyword_data)
+        return JsonResponse(tour_place_data, safe=False)
 
-
-def search2(request):
-    # tour = TourPlace_has_TourKeyword.objects.filter(tour_id__in=[1])
-    tour = TourPlace_TourKeyword.objects.filter(placekey_id=2)
-    return HttpResponse(tour)
+    return JsonResponse({"error": "Place not found"}, status=404)
 
 
-def userpre(request):
-    likes = User_Preference.objects.filter(user=1)
-    return HttpResponse(likes)
+# 키워드에 해당하는 tour 찾기
+def search2(request, id):
+    # Filter TourPlace_TourKeyword objects based on placekey_id
+    tour_keywords = TourPlace_TourKeyword.objects.filter(placekey_id=id)
+
+    # Extract tour_id values from the filtered TourPlace_TourKeyword objects
+    tour_ids = [tk.tour_id for tk in tour_keywords]
+
+    # Filter TourPlace objects based on the collected tour_id values
+    result = TourPlace.objects.filter(tour_id__in=tour_ids)
+
+    # Serialize the queryset to JSON format
+    tour_data = TourPlaceSerializer(result, many=True)
+
+    # Return the serialized data as a JSON response
+    return JsonResponse(tour_data.data, safe=False)
+
+
+def userpre(request, id):
+    likes = User_Preference.objects.filter(user=id)
+    serializer = UserPreferenceSerializer(likes, many=True)
+
+    # Return the serialized data as a JSON response
+    return JsonResponse(serializer.data, safe=False)
 
 
 # 점수 높은 순 top3
 def best(request):
     post_list = Post.objects.all().order_by("-post_score")
     post_list = post_list[:3]
-    context = ""
-    for p in post_list:
-        context += "socre: " + str(p.post_score) + "text: " + p.post_text + " \n"
+    serializer = PostSerializer(post_list, many=True)
 
-    return HttpResponse(context)
+    # Return the serialized data as a JSON response
+    return JsonResponse(serializer.data, safe=False)
 
 
 # 커뮤니티 글 작성
@@ -270,15 +281,3 @@ class CommentsWriteView(APIView):
 
         serializer = CommentSerializer(com)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
-
-
-# class ExampleView(APIView):
-#     def get(self, request, format=None):
-#         data = {"id": 1, "name": "Example"}
-#         return Response(data)
-
-#     def post(self, request, format=None):
-#         serializer = ExampleSerializer(data=request.data)
-#         if serializer.is_valid():
-#             return Response(serializer.data, status=status.HTTP_201_CREATED)
-#         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

@@ -19,9 +19,9 @@ from common.decorators import jwt_required
 from django.contrib import admin
 from django.shortcuts import render
 from django.urls import include, path
+
 # from drf_yasg import openapi
 # from drf_yasg.views import get_schema_view
-from rest_framework import permissions
 
 
 @jwt_required
@@ -52,6 +52,6 @@ urlpatterns = [
     path("accounts/", include("accounts.urls")),
     path("community/", include("community.urls")),
     path("mainpage/", include("mainpage.urls")),
-    path('tourlike/', include('tourlike.urls')),
+    path("tourlike/", include("tourlike.urls")),
     path("community/", include("community.urls")),
 ]

@@ -18,10 +18,22 @@ class BannerSerializer(serializers.ModelSerializer):
 class PostSerializer(serializers.ModelSerializer):
     class Meta:
         model = Post
-        fields = ["post_text", "user_id"]
+        fields = ["post_id", "post_text", "user_id", "post_score"]
 
 
 class CommentSerializer(serializers.ModelSerializer):
     class Meta:
         model = Comments
         fields = ["comments_id", "user_id", "comments"]
+
+
+class TourPlaceSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = TourPlace
+        fields = ["tour_id", "tour_name", "tour_summary"]
+
+
+class UserPreferenceSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User_Preference
+        fields = ["user_id", "preference_id"]
