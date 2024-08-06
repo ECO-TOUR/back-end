@@ -1,7 +1,13 @@
-from django.http import JsonResponse
+import json
+
+from django.core.exceptions import ObjectDoesNotExist
+from django.http import HttpResponseBadRequest, JsonResponse
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
+from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.http import require_http_methods
 from rest_framework import status
+from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
@@ -72,8 +78,8 @@ def place2keyword(request, id):
 # 커뮤니티에서 장소 조회하면, 관련 포스트 출력
 
 
-def search(request):
-    place_name = request.GET.get("place", None)
+def search(request, place_name):
+    # place_name = request.GET.get("place", None)
 
     if place_name:
         # Filter TourPlace objects based on the 'place' parameter
@@ -176,6 +182,42 @@ class WriteView(APIView):
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
 
+@csrf_exempt
+@api_view(["GET", "POST"])
+def write(request):
+    if request.method == "GET":
+        return JsonResponse("ok")
+    if request.method == "POST":
+        data = request.data
+
+        text = data.get("text")
+        img = data.get("img")
+        date = data.get("date")
+        likes = data.get("likes", 0)
+        score = data.get("score", 0)
+        hashtag = data.get("hashtag")
+        tour_id = data.get("tour_id")
+        user_id = data.get("user_id")  # Ensure to handle user ID appropriately
+
+        post = Post.objects.create(
+            post_text=text,
+            post_img=img,
+            post_date=date,
+            post_likes=likes,
+            post_score=score,
+            post_hashtag=hashtag,
+            post_view=0,
+            last_modified=date,
+            tour_id=tour_id,
+            user_id=user_id,
+        )
+
+        serializer = PostSerializer(post)
+        return JsonResponse(serializer.data, safe=False)
+
+    return HttpResponseBadRequest("Invalid HTTP method")
+
+
 # post_id를 입력받으면, 해당하는 커뮤니티 글 수정
 # 일단 전체 post 내용을 전달해주고, 다시 받아와야 할 듯.
 class ModifyView(APIView):
@@ -206,11 +248,60 @@ class ModifyView(APIView):
         return Response(serializer.data, status=status.HTTP_200_OK)
 
 
-class DeleteView(APIView):
-    def get(self, request, id, format=None):
-        post = Post.objects.filter(post_id=id)
-        post.delete()
+@csrf_exempt
+@api_view(["GET", "POST"])
+def modify(request):
+    if request.method == "GET":
         return Response(status=status.HTTP_200_OK)
+
+    if request.method == "POST":
+        try:
+            data = json.loads(request.body)
+        except json.JSONDecodeError:
+            return HttpResponseBadRequest("Invalid JSON")
+
+        post_id = data.get("post_id")
+        if not post_id:
+            return HttpResponseBadRequest("Post ID is required")
+
+        # Fetch the post object or return a 404 error if not found
+        post = get_object_or_404(Post, post_id=post_id)  # Ensure 'id' matches your model's field name
+
+        # Update the fields with the provided data
+        post.post_text = data.get("text", post.post_text)
+        post.post_img = data.get("img", post.post_img)
+        post.post_date = data.get("date", post.post_date)
+        post.post_likes = data.get("likes", post.post_likes)
+        post.post_score = data.get("score", post.post_score)
+        post.post_hashtag = data.get("hashtag", post.post_hashtag)
+        post.last_modified = timezone.now()
+        post.tour_id = data.get("tour_id", post.tour_id)
+        post.user_id = data.get("user_id", post.user_id)  # Ensure to handle user ID appropriately
+
+        # Save the updated post object
+        post.save()
+        # return JsonResponse("ok", status=200, safe=False)
+        # Serialize the updated post object
+        serializer = PostSerializer(post)
+
+        # Return the serialized data as a response
+        return JsonResponse(serializer.data, status=200, safe=False)
+
+    return HttpResponseBadRequest("Invalid HTTP method")
+
+
+@csrf_exempt
+@api_view(["GET", "POST"])
+@require_http_methods(["DELETE"])
+def delete_post(request, id):
+    try:
+        post = Post.objects.get(post_id=id)
+        post.delete()
+        return JsonResponse({"message": "Post deleted successfully."}, status=200)
+    except ObjectDoesNotExist:
+        return JsonResponse({"error": "Post not found."}, status=404)
+    except Exception as e:
+        return JsonResponse({"error": str(e)}, status=500)
 
 
 # 검색기능
