@@ -19,7 +19,7 @@ def jwt_required(view_func):
         try:
             access_token_obj = AccessToken(access_token)
             user_id = access_token_obj["user_id"]
-            user = User.objects.get(id=user_id)
+            user = User.objects.get(user_id=user_id)
             request.user = user
         except (TokenError, User.DoesNotExist):
             # Access token is invalid, try to use the refresh token to get a new access token
@@ -30,7 +30,7 @@ def jwt_required(view_func):
                 refresh_token_obj = RefreshToken(refresh_token)
                 new_access_token = str(refresh_token_obj.access_token)
                 user_id = refresh_token_obj["user_id"]
-                user = User.objects.get(id=user_id)
+                user = User.objects.get(user_id=user_id)
 
                 # Set the new access token in cookies
                 response = HttpResponseRedirect(request.get_full_path())
