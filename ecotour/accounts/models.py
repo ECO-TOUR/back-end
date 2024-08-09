@@ -6,6 +6,7 @@ from rest_framework_simplejwt.tokens import RefreshToken
 
 
 class CustomUser(AbstractUser):
+    user_id = models.AutoField(primary_key=True)
     profile_photo = models.CharField(max_length=255, blank=True, null=True)
     nickname = models.CharField(max_length=255, unique=True)
     oauth_kakao_access_token = models.CharField(max_length=255, blank=True, null=True)
@@ -18,6 +19,7 @@ class CustomUser(AbstractUser):
 
 
 class RefreshTokenModel(models.Model):
+    token_id = models.AutoField(primary_key=True)
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     token = models.CharField(max_length=255, unique=True)
     jti = models.CharField(max_length=36, unique=True)  # JTI 필드 추가
