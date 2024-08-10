@@ -4,10 +4,12 @@ from django.utils import timezone
 from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.views import APIView
-
+from django.views.decorators.csrf import csrf_exempt
+from rest_framework.decorators import api_view
 from .models import *
 from .serializers import *
-
+import json
+from django.http import HttpResponse
 # 모든 유저가 쓴 post를 별명과 함께 출력하기
 # <내가 쓴 글>
 # def test2(request):
@@ -22,8 +24,8 @@ from .serializers import *
 #     return HttpResponse(response_content)
 
 
-def postbyid(request, id):
-    post_list = Post.objects.filter(user_id=id)
+def postlist(request):
+    post_list = Post.objects.all()
     serializer = PostSerializer(post_list, many=True)
     return JsonResponse(serializer.data, safe=False, status=status.HTTP_200_OK)
 
@@ -145,20 +147,21 @@ def best(request):
 # 커뮤니티 글 작성
 
 # from django.utils.dateparse import parse_datetime
-
-
-class WriteView(APIView):
-    def post(self, request, format=None):
+@csrf_exempt
+@api_view(['POST'])
+def write(request):
+    if request.method == "POST":
         text = request.data.get("text")
         img = request.data.get("img")
-        # date = parse_datetime(request.data.get("date"))
         date = request.data.get("date")
-        likes = request.data.get("likes", 0)
-        score = request.data.get("score", 0)  # 5점만점.12345.★★★★☆
+        likes = 0
+        score = request.data.get("score", 0)
         hashtag = request.data.get("hashtag")
         tour_id = request.data.get("tour_id")
-        user_id = request.data.get("user_id", 1)  # Change this to the actual user ID handling logic
+        user_id = request.data.get("user_id", 1)
 
+        # Convert date string to datetime object
+        
         post = Post.objects.create(
             post_text=text,
             post_img=img,
@@ -173,111 +176,157 @@ class WriteView(APIView):
         )
 
         serializer = PostSerializer(post)
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return JsonResponse("ok", safe=False, status=status.HTTP_200_OK)
+    else:
+        return JsonResponse({"error": "Only POST requests are allowed."}, status=status.HTTP_400_BAD_REQUEST)
 
 
-# post_id를 입력받으면, 해당하는 커뮤니티 글 수정
-# 일단 전체 post 내용을 전달해주고, 다시 받아와야 할 듯.
-class ModifyView(APIView):
-    def post(self, request, format=None):
-        post_id = request.data.get("post_id")
+@csrf_exempt
+def modify(request):
+    if request.method == "POST":
+        try:
+            # JSON 데이터를 파싱합니다.
+            data = json.loads(request.body)
+            post_id = data.get("post_id")
+            
+            # post_id로 Post 객체를 가져오거나 404 오류를 반환합니다.
+            post = get_object_or_404(Post, post_id=post_id)
 
-        # Fetch the post object or return a 404 error if not found
-        post = get_object_or_404(Post, post_id=post_id)
+            # 데이터를 업데이트합니다.
+            post.post_text = data.get("text", post.post_text)
+            post.post_img = data.get("img", post.post_img)
+            #post.post_date = data.get("date", post.post_date)
+            post.post_likes = data.get("likes", post.post_likes)
+            post.post_score = data.get("score", post.post_score)
+            post.post_hashtag = data.get("hashtag", post.post_hashtag)
+            post.last_modified = timezone.now()
+            post.tour_id = data.get("tour_id", post.tour_id)
+            post.user_id = data.get("user_id", post.user_id)
 
-        # Update the fields with the provided data
-        post.post_text = request.data.get("text", post.post_text)
-        post.post_img = request.data.get("img", post.post_img)
-        post.post_date = request.data.get("date", post.post_date)
-        post.post_likes = request.data.get("likes", post.post_likes)
-        post.post_score = request.data.get("score", post.post_score)
-        post.post_hashtag = request.data.get("hashtag", post.post_hashtag)
-        post.last_modified = timezone.now()
-        post.tour_id = request.data.get("tour_id", post.tour_id)
-        post.user_id = request.data.get("user_id", post.user_id)  # Ensure to handle user ID appropriately
+            # 변경된 내용을 저장합니다.
+            post.save()
 
-        # Save the updated post object
-        post.save()
-
-        # Serialize the updated post object
-        serializer = PostSerializer(post)
-
-        # Return the serialized data as a response
-        return Response(serializer.data, status=status.HTTP_200_OK)
+            # 객체를 직렬화합니다.
+            serializer = PostSerializer(post)
+            
+            # 직렬화된 데이터를 JSON 응답으로 반환합니다.
+            return JsonResponse(serializer.data, safe=False, status=200)
+        
+        except json.JSONDecodeError:
+            return JsonResponse({"error": "Invalid JSON format."}, status=400)
+        
+        except KeyError as e:
+            return JsonResponse({"error": f"Missing key: {str(e)}"}, status=400)
+        
+    else:
+        return JsonResponse({"error": "modify: Only POST requests are allowed."}, status=404)
 
 
-class DeleteView(APIView):
-    def get(self, request, id, format=None):
-        post = Post.objects.filter(post_id=id)
+def delete(request, id):
+    
+    try:
+            # 특정 포스트 객체를 가져옵니다. 없으면 404를 반환합니다.
+        post = get_object_or_404(Post, post_id=id)  # 필드 이름이 'id'인지 'post_id'인지 확인하세요.
+            
+            # 객체를 삭제합니다.
         post.delete()
-        return Response(status=status.HTTP_200_OK)
 
+        return JsonResponse("ok", safe=False, status=status.HTTP_200_OK)
+    except Exception as e:
+        return JsonResponse({"error": f"An unexpected error occurred: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    
 
 # 검색기능
-class SearchView(APIView):
-    def get(self, request, sorttype, text, format=None):
-        # sorttype = 최신순(1) or 좋아요순(2)
+def search_post(request, sorttype, text):
+    print(sorttype, text)
+    if not text.strip():  # 빈 문자열이나 공백만 있는 경우 처리
+        return JsonResponse({"error": "No search text provided."}, status=status.HTTP_400_BAD_REQUEST)
 
-        if not text:
-            return Response({"error": "No search text provided."}, status=status.HTTP_400_BAD_REQUEST)
+    # Initialize an empty queryset
+    post_queryset = Post.objects.none()
 
-        # Initialize an empty queryset
-        post_queryset = Post.objects.none()
+    # Search posts by text in post_text
+    post_queryset |= Post.objects.filter(post_text__icontains=text)
 
-        # Search posts by text in post_text
-        post_queryset |= Post.objects.filter(post_text__icontains=text)
+    # Search keywords by text
+    key_list = TourKeyword.objects.filter(keyword_name__icontains=text)
 
-        # Search keywords by text
-        key_list = TourKeyword.objects.filter(keyword_name__icontains=text)
+    if key_list.exists():
+        # Get tour places related to found keywords
+        temp_list = TourPlace_TourKeyword.objects.filter(keyword_id__in=key_list)
 
-        if key_list.exists():
-            # Get tour places related to found keywords
-            temp_list = TourPlace_TourKeyword.objects.filter(keyword_id__in=key_list)
+        if temp_list.exists():
+            # Get all related tour ids
+            tour_ids = [t.tour_id for t in temp_list]
 
-            if temp_list.exists():
-                # Get all related tour ids
-                tour_ids = [t.tour_id for t in temp_list]
+            # Search posts by related tour ids
+            post_queryset |= Post.objects.filter(tour_id__in=tour_ids)
 
-                # Search posts by related tour ids
-                post_queryset |= Post.objects.filter(tour_id__in=tour_ids)
+    # Sort posts based on sorttype
+    if sorttype == 1:  # 최신순
+        post_queryset = post_queryset.order_by("-post_date")
+    elif sorttype == 2:  # 좋아요순
+        post_queryset = post_queryset.order_by("-post_likes")
+    else:
+        # sorttype이 예상치 못한 값일 경우 기본값 설정
+        return JsonResponse({"error": "Invalid sort type provided."}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Sort posts based on sorttype
-        if sorttype == 1:  # 최신순
-            post_queryset = post_queryset.order_by("-post_date")
-        elif sorttype == 2:  # 좋아요순
-            post_queryset = post_queryset.order_by("-post_likes")
+    # Remove duplicates
+    post_queryset = post_queryset.distinct()
 
-        # Remove duplicates
-        post_queryset = post_queryset.distinct()
+    # Serialize the result
+    serializer = PostSerializer(post_queryset, many=True)
 
-        # Serialize the result
-        serializer = PostSerializer(post_queryset, many=True)
-
-        return Response(serializer.data, status=status.HTTP_200_OK)
+    return JsonResponse(serializer.data, safe=False, status=status.HTTP_200_OK)
 
 
-class MyPostView(APIView):
-    def get(self, request, id, format=None):
+def mypost(request, id):
+    try:
+        # 유저 ID로 포스트를 필터링
+        print(f"Fetching posts for user ID: {id}")
         post = Post.objects.filter(user_id=id)
+        print(f"Posts found: {post.count()}")
+
+        # 시리얼라이저를 사용해 데이터를 직렬화
         serializer = PostSerializer(post, many=True)
-        return Response(serializer.data, status=status.HTTP_200_OK)
+        print("Serialization complete")
+
+        return JsonResponse(serializer.data, safe=False, status=status.HTTP_200_OK)
+    except Exception as e:
+        print(f"An error occurred: {str(e)}")
+        return JsonResponse({"error": "An unexpected error occurred."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 # 특정 포스트에 달린 댓글 모두 조회하기
-class CommentsView(APIView):
-    def get(self, request, post_id, format=None):
-        comment = Comments.objects.filter(post_id=post_id)
-        serializer = CommentSerializer(comment, many=True)
-        return Response(serializer.data, status=status.HTTP_200_OK)
+def comment(request, id):
+    comment = Comments.objects.filter(post_id=id)
+    serializer = CommentSerializer(comment, many=True)
+    return JsonResponse(serializer.data,  safe=False,status=status.HTTP_200_OK)
 
+@csrf_exempt
+def comment_write(request):
+    if request.method == "POST":
+        try:
+            data = json.loads(request.body)
+            # POST 데이터에서 필요한 정보 가져오기
+            post_id = data.get("post_id")
+            user_id = data.get("user_id")
+            comments_date = timezone.now()
+            comments = data.get("comments")
 
-class CommentsWriteView(APIView):
-    def post(self, request, format=None):
-        post_id = request.data.get("post_id")
-        user_id = request.data.get("user_id")
-        comments_date = timezone.now()
-        comments = request.data.get("comments")
-        com = Comments.objects.create(user_id=user_id, comments_date=comments_date, comments=comments, post_id=post_id)
+            # 데이터가 올바르게 제공되었는지 확인
+            if not all([post_id, user_id, comments]):
+                return JsonResponse({"error": "Missing required fields."}, status=status.HTTP_400_BAD_REQUEST)
 
-        serializer = CommentSerializer(com)
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
+            # 댓글 생성
+            com = Comments.objects.create(user_id=user_id, comments_date=comments_date, comments=comments, post_id=post_id)
+
+            # 시리얼라이저 사용
+            serializer = CommentSerializer(com)
+            return JsonResponse(serializer.data, status=status.HTTP_200_OK)
+        except Exception as e:
+            # 예외 처리 및 디버깅 정보 로그
+            print(f"An error occurred: {str(e)}")
+            return JsonResponse({"error": "An unexpected error occurred."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    else:
+        return JsonResponse({"error": "Invalid HTTP method."}, status=status.HTTP_400_BAD_REQUEST)
