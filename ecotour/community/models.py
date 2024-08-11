@@ -29,6 +29,7 @@ class TourPlace(models.Model):
 class TourKeyword(models.Model):
     keyword_id = models.AutoField(primary_key=True)
     keyword_name = models.CharField(max_length=45)
+    search_count = models.IntegerField(default=0)  # 가윤 검색 횟수 추가
 
     class Meta:
         db_table = "TourKeyword"
@@ -131,9 +132,9 @@ class Notification(models.Model):
 
 # tourLog 모델
 class TourLog(models.Model):
-    tourlog_id = models.AutoField(primary_key=True)
-    tourlog_date = models.DateField()
-    tourlog_text = models.CharField(max_length=100)
+    log_id = models.AutoField(primary_key=True)
+    search_date = models.DateField()
+    search_text = models.CharField(max_length=100)
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="usertourlog")
 
     class Meta:

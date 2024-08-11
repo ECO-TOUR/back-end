@@ -54,4 +54,5 @@ urlpatterns = [
     path("mainpage/", include("mainpage.urls")),
     path("tourlike/", include("tourlike.urls")),
     path("community/", include("community.urls")),
+    path('', include('tourspot.urls')), 
 ]

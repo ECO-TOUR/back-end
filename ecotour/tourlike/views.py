@@ -12,17 +12,12 @@ User = get_user_model()
 # @login_required
 @csrf_exempt
 def toggle_like(request, user_id):
-    print("#" * 30)
     if request.method == "POST":
         data = json.loads(request.body)
         tour_id = data.get("tour_id")
-
         tour_place = get_object_or_404(TourPlace, tour_id=tour_id)
-        print(tour_place.tour_id)
         user = get_object_or_404(User, user_id=user_id)
-        print(user.user_id)
         like, created = Likes.objects.get_or_create(user=user, tour=tour_place)
-        print("라이크확인:", like, created)
         if not created:
             # 이미 좋아요를 누른 경우, 좋아요 취소
             like.delete()
@@ -51,7 +46,11 @@ def toggle_like(request, user_id):
 
 # @login_required
 def liked_places(request, user_id):
-    user = get_object_or_404(User, user_id=user_id)
-    likes = Likes.objects.filter(user_id=user)
-    likes_list = [{"tour_id": like.tour_id.id, "tour_name": like.tour_id.tour_name} for like in likes]
-    return JsonResponse({"statusCode": 200, "message": "찜목록을 성공적으로 가져왔습니다.", "data": likes_list}, safe=False)
+    user = get_object_or_404(User, user_id=user_id) 
+    likes = Likes.objects.filter(user=user)
+
+    # 좋아요 데이터에서 관광지 정보 추출하여 리스트로 저장
+    likes_list = [{"tour_id": like.tour.tour_id, "tour_name": like.tour.tour_name} for like in likes]
+    
+    return JsonResponse(
+        {"statusCode": 200, "message": "찜목록을 성공적으로 가져왔습니다.", "data": likes_list}, safe=False)
