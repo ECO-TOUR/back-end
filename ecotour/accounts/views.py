@@ -2,6 +2,7 @@ from datetime import timedelta
 from pathlib import Path
 
 import environ
+import jwt
 import requests
 from common.decorators import jwt_required
 from django.conf import settings
@@ -66,7 +67,7 @@ def login_view(request):
                 # Issue JWT token
                 token_instance = RefreshTokenModel.create_token(user)
 
-                refresh = token_instance.token
+                refresh_token = token_instance.token
                 access_token = str(RefreshToken(token_instance.token).access_token)
 
                 # Create response to redirect to the main page
@@ -74,8 +75,8 @@ def login_view(request):
 
                 # Set the JWT token in the cookies
                 secure_cookie = settings.ENVIRONMENT == "production"
-                response.set_cookie("access", access_token, httponly=True, secure=secure_cookie, samesite="Lax")
-                response.set_cookie("refresh", str(refresh), httponly=True, secure=secure_cookie, samesite="Lax")
+                response.set_cookie("access_token", access_token, httponly=True, secure=secure_cookie, samesite="Lax")
+                response.set_cookie("refresh_token", str(refresh_token), httponly=True, secure=secure_cookie, samesite="Lax")
                 return response
             else:
                 form.add_error(None, "Invalid username or password")
@@ -85,8 +86,7 @@ def login_view(request):
 
 
 def logout_view(request):
-    # RefreshTokenModel.objects.filter(user=request.user).delete()
-    refresh_token = request.COOKIES.get("refresh")
+    refresh_token = request.COOKIES.get("refresh_token")
     if refresh_token:
         try:
             token_instance = RefreshTokenModel.objects.get(token=refresh_token)
@@ -98,8 +98,8 @@ def logout_view(request):
     logout(request)
 
     response = redirect("/")
-    response.delete_cookie("access")
-    response.delete_cookie("refresh")
+    response.delete_cookie("access_token")
+    response.delete_cookie("refresh_token")
     return response
 
 
@@ -121,17 +121,17 @@ class LoginAPIView(APIView):
             # Issue JWT token
             token_instance = RefreshTokenModel.create_token(user)
 
-            refresh = token_instance.token
+            refresh_token = token_instance.token
             access_token = str(RefreshToken(token_instance.token).access_token)
 
-            return Response({"refresh": str(refresh), "access": access_token})
+            return Response({"refresh_token": str(refresh_token), "access_token": access_token})
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
 @method_decorator(jwt_required, name="dispatch")
 class LogoutAPIView(APIView):
     def post(self, request, *args, **kwargs):
-        refresh_token = request.COOKIES.get("refresh")
+        refresh_token = request.COOKIES.get("refresh_token")
         if refresh_token:
             try:
                 token_instance = RefreshTokenModel.objects.get(token=refresh_token)
@@ -141,8 +141,8 @@ class LogoutAPIView(APIView):
 
         logout(request)
         response = Response(status=status.HTTP_204_NO_CONTENT)
-        response.delete_cookie("access")
-        response.delete_cookie("refresh")
+        response.delete_cookie("access_token")
+        response.delete_cookie("refresh_token")
         return response
 
 
@@ -190,7 +190,7 @@ def oauth_kakao_login_view(request):
     # Issue JWT token
     token_instance = RefreshTokenModel.create_token(user)
 
-    refresh = token_instance.token
+    refresh_token = token_instance.token
     access_token = str(RefreshToken(token_instance.token).access_token)
 
     # Create response to redirect to the main page
@@ -198,18 +198,21 @@ def oauth_kakao_login_view(request):
 
     # Set the JWT token in the cookies
     secure_cookie = settings.ENVIRONMENT == "production"
-    response.set_cookie("access", access_token, httponly=True, secure=secure_cookie, samesite="Lax")
-    response.set_cookie("refresh", str(refresh), httponly=True, secure=secure_cookie, samesite="Lax")
+    response.set_cookie("access_token", access_token, httponly=True, secure=secure_cookie, samesite="Lax")
+    response.set_cookie("refresh_token", str(refresh_token), httponly=True, secure=secure_cookie, samesite="Lax")
     return response
 
 
 def oauth_kakao_logout_view(request):
     if request.session.get("user_id"):
+
         uri = "https://kapi.kakao.com/v1/user/logout"
         header = {"Authorization": f"Bearer {request.session.get('access_token_kakao')}"}
 
         data = {"target_id_type": "user_id", "target_id": request.session.get("user_id")}
+
         response_logout = call("POST", uri, data, header)
+
         return JsonResponse(response_logout)
 
 
@@ -222,6 +225,7 @@ class OauthKaKaoLoginAPIView(APIView):
         if serializer.is_valid():
             # Access the validated data
             code = serializer.validated_data["code"]
+
             if not code:
                 return JsonResponse({"error": "Code is required"}, status=400)
 
@@ -235,12 +239,10 @@ class OauthKaKaoLoginAPIView(APIView):
             header = {"Content-Type": "application/x-www-form-urlencoded"}
             token_uri = "https://kauth.kakao.com/oauth/token"
             response_token = call("POST", token_uri, data, header)
-
             # Handle error response from token request
             if "error" in response_token:
                 return Response(response_token, status=status.HTTP_400_BAD_REQUEST)
 
-            print(response_token)
             kakao_access_token = response_token["access_token"]
             kakao_refresh_token = response_token["refresh_token"]
             kakao_id_token = response_token.get("id_token")
@@ -250,7 +252,6 @@ class OauthKaKaoLoginAPIView(APIView):
             # Fetch user info from Kakao
             response_oicd = call("GET", "https://kapi.kakao.com/v1/oidc/userinfo", {}, {"Authorization": f"Bearer {kakao_access_token}"})
 
-            print(response_oicd)
             # Authenticate the user
             user = authenticate(request, username=response_oicd["nickname"], password="dummy")
 
@@ -274,19 +275,19 @@ class OauthKaKaoLoginAPIView(APIView):
 
             # Issue JWT token
             token_instance = RefreshTokenModel.create_token(user)
-            refresh = token_instance.token
+            refresh_token = token_instance.token
             access_token_jwt = str(RefreshToken(token_instance.token).access_token)
 
             # Create the response data (Serialization)
             response_data = {
                 "user": {
-                    "id": user.id,
+                    "user_id": user.user_id,
                     "username": user.username,
                     "nickname": user.nickname,
                     "profile_photo": (user.profile_photo if user.profile_photo else None),
                 },
-                "refresh": str(refresh),
-                "access": access_token_jwt,
+                "refresh_token": str(refresh_token),
+                "access_token": access_token_jwt,
             }
 
             # Return the response
@@ -300,17 +301,22 @@ class OauthKaKaoLoginAPIView(APIView):
 class OauthKaKaoLogoutAPIView(APIView):
     def post(self, request, *args, **kwargs):
         # Get the user ID from the request (set by the jwt_required decorator)
-        user_id = request.user_id
+        access_token = request.COOKIES.get("access_token")
+
+        payload = jwt.decode(access_token, settings.SECRET_KEY, algorithms=["HS256"])
+
+        user_id = payload.get("user_id")
 
         # Retrieve the user from the database
         try:
-            user = CustomUser.objects.get(id=user_id)
+            user = CustomUser.objects.get(user_id=user_id)
         except CustomUser.DoesNotExist:
             return Response({"error": "User not found"}, status=status.HTTP_404_NOT_FOUND)
 
         # Use the stored access_token to get user info from Kakao
         user_info_uri = "https://kapi.kakao.com/v1/user/access_token_info"
-        headers = {"Authorization": f"Bearer {user.oauth_access_token}"}
+        headers = {"Authorization": f"Bearer {user.oauth_kakao_access_token}"}
+
         response_user_info = call("GET", user_info_uri, {}, headers)
 
         if "error" in response_user_info:
@@ -321,7 +327,7 @@ class OauthKaKaoLogoutAPIView(APIView):
 
         # Logout the user from Kakao
         logout_uri = "https://kapi.kakao.com/v1/user/logout"
-        headers = {"Authorization": f"Bearer {user.oauth_access_token}"}
+        headers = {"Authorization": f"Bearer {user.oauth_kakao_access_token}"}
         data = {"target_id_type": "user_id", "target_id": kakao_user_id}
         response_logout = call("POST", logout_uri, data, headers)
 
@@ -329,19 +335,26 @@ class OauthKaKaoLogoutAPIView(APIView):
             return Response(response_logout, status=status.HTTP_400_BAD_REQUEST)
 
         # Invalidate the user's OAuth tokens in your database
-        user.oauth_access_token = None
-        user.oauth_refresh_token = None
-        user.oauth_id_token = None
-        user.oauth_expires_at = None
+        user.oauth_kakao_access_token = None
+        user.oauth_kakao_refresh_token = None
+        user.oauth_kakao_id_token = None
+        user.oauth_kakao_expires_at = None
         user.save()
 
         # Log the user out from the Django session
+        refresh_token = request.COOKIES.get("refresh_token")
+        if refresh_token:
+            try:
+                token_instance = RefreshTokenModel.objects.get(token=refresh_token)
+                token_instance.blacklist()
+            except RefreshTokenModel.DoesNotExist:
+                pass
         logout(request)
 
         # Clear cookies
         response = Response({"detail": "Logged out successfully"}, status=status.HTTP_200_OK)
-        response.delete_cookie("access")
-        response.delete_cookie("refresh")
+        response.delete_cookie("access_token")
+        response.delete_cookie("refresh_token")
 
         return response
 

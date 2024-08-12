@@ -11,8 +11,8 @@ User = get_user_model()
 def jwt_required(view_func):
     @wraps(view_func)
     def _wrapped_view(request, *args, **kwargs):
-        access_token = request.COOKIES.get("access")
-        refresh_token = request.COOKIES.get("refresh")
+        access_token = request.COOKIES.get("access_token")
+        refresh_token = request.COOKIES.get("refresh_token")
         if not access_token:
             return HttpResponseRedirect(reverse("accounts:login"))
 
@@ -34,7 +34,7 @@ def jwt_required(view_func):
 
                 # Set the new access token in cookies
                 response = HttpResponseRedirect(request.get_full_path())
-                response.set_cookie("access", new_access_token, httponly=True, secure=False, samesite="Lax")
+                response.set_cookie("access_token", new_access_token, httponly=True, secure=False, samesite="Lax")
                 request.user = user
                 return response
             except TokenError:

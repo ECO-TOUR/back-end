@@ -46,11 +46,10 @@ def toggle_like(request, user_id):
 
 # @login_required
 def liked_places(request, user_id):
-    user = get_object_or_404(User, user_id=user_id) 
+    user = get_object_or_404(User, user_id=user_id)
     likes = Likes.objects.filter(user=user)
 
     # 좋아요 데이터에서 관광지 정보 추출하여 리스트로 저장
     likes_list = [{"tour_id": like.tour.tour_id, "tour_name": like.tour.tour_name} for like in likes]
-    
-    return JsonResponse(
-        {"statusCode": 200, "message": "찜목록을 성공적으로 가져왔습니다.", "data": likes_list}, safe=False)
+
+    return JsonResponse({"statusCode": 200, "message": "찜목록을 성공적으로 가져왔습니다.", "data": likes_list}, safe=False)
