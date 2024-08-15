@@ -280,14 +280,18 @@ class OauthKaKaoLoginAPIView(APIView):
 
             # Create the response data (Serialization)
             response_data = {
-                "user": {
-                    "user_id": user.user_id,
-                    "username": user.username,
-                    "nickname": user.nickname,
-                    "profile_photo": (user.profile_photo if user.profile_photo else None),
+                "statusCode": 200,
+                "message": "OK",
+                "content": {
+                    "user": {
+                        "user_id": user.user_id,
+                        "username": user.username,
+                        "nickname": user.nickname,
+                        "profile_photo": (user.profile_photo if user.profile_photo else None),
+                    },
+                    "refresh_token": str(refresh_token),
+                    "access_token": access_token_jwt,
                 },
-                "refresh_token": str(refresh_token),
-                "access_token": access_token_jwt,
             }
 
             # Return the response
@@ -352,11 +356,61 @@ class OauthKaKaoLogoutAPIView(APIView):
         logout(request)
 
         # Clear cookies
-        response = Response({"detail": "Logged out successfully"}, status=status.HTTP_200_OK)
+
+        response = Response({"statusCode": 200, "message": "OK", "content": {"detail": "Logged out successfully"}}, status=status.HTTP_200_OK)
         response.delete_cookie("access_token")
         response.delete_cookie("refresh_token")
 
         return response
+
+
+@method_decorator(jwt_required, name="dispatch")
+class OauthKaKaoSignoutAPIView(APIView):
+    def post(self, request, *args, **kwargs):
+        # Get the user ID from the request (set by the jwt_required decorator)
+        access_token = request.COOKIES.get("access_token")
+
+        payload = jwt.decode(access_token, settings.SECRET_KEY, algorithms=["HS256"])
+
+        user_id = payload.get("user_id")
+
+        # Retrieve the user from the database
+        try:
+            user = CustomUser.objects.get(user_id=user_id)
+        except CustomUser.DoesNotExist:
+            return Response({"error": "User not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        # Use the stored access_token to get user info from Kakao
+        user_info_uri = "https://kapi.kakao.com/v1/user/access_token_info"
+        headers = {"Authorization": f"Bearer {user.oauth_kakao_access_token}"}
+
+        response_user_info = call("GET", user_info_uri, {}, headers)
+
+        if "error" in response_user_info:
+            return Response(response_user_info, status=status.HTTP_400_BAD_REQUEST)
+
+        # Get the Kakao user ID from the response
+        kakao_user_id = response_user_info.get("id")
+
+        # Logout the user from Kakao
+        logout_uri = "https://kapi.kakao.com/v1/user/logout"
+        headers = {"Authorization": f"Bearer {user.oauth_kakao_access_token}"}
+        data = {"target_id_type": "user_id", "target_id": kakao_user_id}
+        response_logout = call("POST", logout_uri, data, headers)
+
+        if "error" in response_logout:
+            return Response(response_logout, status=status.HTTP_400_BAD_REQUEST)
+
+        response_delete = user.delete()
+
+        if response_delete:
+            response = Response({"statusCode": 200, "message": "OK", "content": {"detail": "Signout successfully"}}, status=status.HTTP_200_OK)
+            response.delete_cookie("access_token")
+            response.delete_cookie("refresh_token")
+
+            return response
+
+        return Response({"delete error"}, status=status.HTTP_400_BAD_REQUEST)
 
 
 def profile(request):
