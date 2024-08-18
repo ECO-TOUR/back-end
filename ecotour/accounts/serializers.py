@@ -43,7 +43,7 @@ class LoginSerializer(serializers.Serializer):
 class KaKaoLoginSerializer(serializers.Serializer):
     code = serializers.CharField()
 
-    def validate_code(self, value):
-        if not value:
+    def validate_code(self, data):
+        if not data:
             raise serializers.ValidationError("Code is required")
-        return value
+        return data

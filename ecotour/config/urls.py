@@ -58,8 +58,6 @@ urlpatterns = [
     path("mainpage/", include("mainpage.urls")),
     path("tourlike/", include("tourlike.urls")),
     path("community/", include("community.urls")),
-    
-    path("tourlike/api/wishlist/<int:user_id>/Inquire/", tourlike_views.liked_places, name='inquire'),
-    path("tourlike/api/wishlist/<int:user_id>/toggle/", tourlike_views.toggle_like, name="toggle"),
-    
+    path("mypage/", include("mypage.urls")),
+    path("", include("tourspot.urls")),
 ]

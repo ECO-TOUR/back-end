@@ -1,3 +1,4 @@
+from django.core.files.storage import default_storage
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
@@ -207,7 +208,8 @@ def best(request):
 def write(request):
     if request.method == "POST":
         text = request.data.get("text")
-        img = request.data.get("img")
+        img_file = request.FILES.get("img")
+        # date = parse_datetime(request.data.get("date"))
         date = request.data.get("date")
         likes = 0
         score = request.data.get("score", 0)
@@ -219,7 +221,6 @@ def write(request):
         
         post = Post.objects.create(
             post_text=text,
-            post_img=img,
             post_date=date,
             post_likes=likes,
             post_score=score,
@@ -229,6 +230,17 @@ def write(request):
             tour_id=tour_id,
             user_id=user_id,
         )
+
+        # Handle the image file upload and store its path
+        if img_file:
+            # Define the path where you want to save the image
+            path = f"uploads/{post.post_id}/{img_file.name}"
+            # Save the image file to the storage system (e.g., S3)
+            full_path = default_storage.save(path, img_file)
+            # Store the file path in the post_img field
+            post.post_img = full_path
+            # Save the post again with the image path
+            post.save()
 
         serializer = PostSerializer(post)
         #return JsonResponse("ok", safe=False, status=status.HTTP_200_OK)
