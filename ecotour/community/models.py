@@ -12,7 +12,7 @@ class TourPlace(models.Model):
     tour_info = models.TextField()
     tour_img = models.TextField()
     tour_viewcnt = models.IntegerField(default=0)
-    tour_viewcnt_month = models.CharField(max_length=45, default="0")
+    tour_viewcnt_month = models.IntegerField(default=0)
     tour_summary = models.TextField()
     tour_tel = models.CharField(max_length=45, null=True, blank=True)
     tour_telname = models.CharField(max_length=45, null=True, blank=True)
