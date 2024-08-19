@@ -5,6 +5,7 @@ import environ
 import jwt
 import requests
 from common.decorators import jwt_required
+from community.models import Preference, User_Preference
 from django.conf import settings
 from django.contrib.auth import authenticate, get_user_model, login, logout
 from django.http import JsonResponse
@@ -411,6 +412,42 @@ class OauthKaKaoSignoutAPIView(APIView):
             return response
 
         return Response({"delete error"}, status=status.HTTP_400_BAD_REQUEST)
+
+
+@method_decorator(jwt_required, name="dispatch")
+class PreferenceAPIView(APIView):
+    def post(self, request, *args, **kwargs):
+        # Get the user ID from the request (set by the jwt_required decorator)
+        access_token = request.COOKIES.get("access_token")
+
+        payload = jwt.decode(access_token, settings.SECRET_KEY, algorithms=["HS256"])
+
+        user_id = payload.get("user_id")
+
+        # Retrieve the user from the database
+        try:
+            user = CustomUser.objects.get(user_id=user_id)
+        except CustomUser.DoesNotExist:
+            return Response({"error": "User not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        preference_ids = request.data.get("preference")
+
+        # Save each preference for the user
+        for preference_id in preference_ids:
+            try:
+                preference = Preference.objects.get(preference_id=preference_id)
+                User_Preference.objects.create(user=user, preference=preference)
+            except Preference.DoesNotExist:
+                return Response({"error": f"Preference ID {preference_id} not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        response_data = {
+            "statusCode": 200,
+            "message": "OK",
+            "content": {"message": "선호키워드 조사가 성공적으로 반영되었습니다", "preference": preference_ids},
+        }
+
+        # Return the response
+        return Response(response_data, status=status.HTTP_200_OK)
 
 
 def profile(request):
