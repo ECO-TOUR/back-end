@@ -143,9 +143,9 @@ class TourLog(models.Model):
 
 # postlog
 class PostLog(models.Model):
-    postlog_id = models.AutoField(primary_key=True)
-    postlog_date = models.DateField()
-    postlog_text = models.CharField(max_length=100)
+    log_id = models.AutoField(primary_key=True)
+    search_date = models.DateField()
+    search_text = models.CharField(max_length=100)
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="userpostlog")
 
     class Meta:

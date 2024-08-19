@@ -1,16 +1,17 @@
+import json
+
 from django.core.files.storage import default_storage
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
-from rest_framework import status
-from rest_framework.response import Response
-from rest_framework.views import APIView
 from django.views.decorators.csrf import csrf_exempt
+from rest_framework import status
 from rest_framework.decorators import api_view
+from rest_framework.response import Response
+
 from .models import *
 from .serializers import *
-import json
-from django.http import HttpResponse
+
 # 모든 유저가 쓴 post를 별명과 함께 출력하기
 # <내가 쓴 글>
 # def test2(request):
@@ -26,17 +27,14 @@ from django.http import HttpResponse
 
 
 def postlist(request):
-    post_list = Post.objects.all()
+    post_list = Post.objects.all().order_by("-post_date")
     serializer = PostSerializer(post_list, many=True)
-    #return JsonResponse(serializer.data, safe=False, status=status.HTTP_200_OK)
+    # return JsonResponse(serializer.data, safe=False, status=status.HTTP_200_OK)
 
-    response_data = {
-        "statusCode": "OK",
-        "message": "OK",
-        "content": serializer
-    }
-    
+    response_data = {"statusCode": "OK", "message": "OK", "content": serializer}
+
     return Response(response_data, status=status.HTTP_200_OK)
+
 
 def tourkeyword(request):
     # Retrieve all TourPlace objects
@@ -57,13 +55,9 @@ def tourkeyword(request):
     # Prepare data to return as JSON
     keyword_data = {k.keyword_id: k.keyword_name for k in keyword_list}
 
-    #return JsonResponse(keyword_data, safe=False)
-    response_data = {
-        "statusCode": "OK",
-        "message": "OK",
-        "content": keyword_data
-    }
-    
+    # return JsonResponse(keyword_data, safe=False)
+    response_data = {"statusCode": "OK", "message": "OK", "content": keyword_data}
+
     return JsonResponse(response_data, status=status.HTTP_200_OK, safe=False)
 
 
@@ -83,13 +77,9 @@ def place2keyword(request, id):
             {"placekey_id": t.placekey_id, "tour_id": t.tour_id, "keyword_id": t.keyword_id, "keyword": findkeyword(t.keyword_id)}
         )
 
-    #return JsonResponse(place_keyword_data, safe=False)
-    response_data = {
-        "statusCode": "OK",
-        "message": "OK",
-        "content": place_keyword_data
-    }
-    
+    # return JsonResponse(place_keyword_data, safe=False)
+    response_data = {"statusCode": "OK", "message": "OK", "content": place_keyword_data}
+
     return JsonResponse(response_data, status=status.HTTP_200_OK, safe=False)
 
 
@@ -125,16 +115,10 @@ def search(request):
             "keywords": list(keyword_list.values("keyword_id", "keyword_name")),  # Adjust fields as needed
         }
 
-        #return JsonResponse(tour_place_data, safe=False)
-        response_data = {
-        "statusCode": "OK",
-        "message": "OK",
-        "content": tour_place_data
-        }
-    
+        # return JsonResponse(tour_place_data, safe=False)
+        response_data = {"statusCode": "OK", "message": "OK", "content": tour_place_data}
+
         return JsonResponse(response_data, status=status.HTTP_200_OK, safe=False)
-
-
 
     return JsonResponse({"error": "Place not found"}, status=404)
 
@@ -154,15 +138,10 @@ def search2(request, id):
     tour_data = TourPlaceSerializer(result, many=True)
 
     # Return the serialized data as a JSON response
-    #return JsonResponse(tour_data.data, safe=False)
-    response_data = {
-        "statusCode": "OK",
-        "message": "OK",
-        "content": tour_data.data
-    }
-    
-    return JsonResponse(response_data, status=status.HTTP_200_OK, safe=False)
+    # return JsonResponse(tour_data.data, safe=False)
+    response_data = {"statusCode": "OK", "message": "OK", "content": tour_data.data}
 
+    return JsonResponse(response_data, status=status.HTTP_200_OK, safe=False)
 
 
 def userpre(request, id):
@@ -170,16 +149,10 @@ def userpre(request, id):
     serializer = UserPreferenceSerializer(likes, many=True)
 
     # Return the serialized data as a JSON response
-    #return JsonResponse(serializer.data, safe=False)
-    response_data = {
-        "statusCode": "OK",
-        "message": "OK",
-        "content": serializer.data
-    }
-    
+    # return JsonResponse(serializer.data, safe=False)
+    response_data = {"statusCode": "OK", "message": "OK", "content": serializer.data}
+
     return JsonResponse(response_data, status=status.HTTP_200_OK, safe=False)
-
-
 
 
 # 점수 높은 순 top3
@@ -189,15 +162,10 @@ def best(request):
     serializer = PostSerializer(post_list, many=True)
 
     # Return the serialized data as a JSON response
-    #return JsonResponse(serializer.data, safe=False)
-    response_data = {
-        "statusCode": "OK",
-        "message": "OK",
-        "content": serializer.data
-    }
-    
-    return JsonResponse(response_data, status=status.HTTP_200_OK, safe=False)
+    # return JsonResponse(serializer.data, safe=False)
+    response_data = {"statusCode": "OK", "message": "OK", "content": serializer.data}
 
+    return JsonResponse(response_data, status=status.HTTP_200_OK, safe=False)
 
 
 # 커뮤니티 글 작성
@@ -205,7 +173,7 @@ def best(request):
 
 # from django.utils.dateparse import parse_datetime
 @csrf_exempt
-@api_view(['POST'])
+@api_view(["POST"])
 def write(request):
     if request.method == "POST":
         text = request.data.get("text")
@@ -219,7 +187,7 @@ def write(request):
         user_id = request.data.get("user_id", 1)
 
         # Convert date string to datetime object
-        
+
         post = Post.objects.create(
             post_text=text,
             post_date=date,
@@ -243,14 +211,10 @@ def write(request):
             # Save the post again with the image path
             post.save()
 
-        serializer = PostSerializer(post)
-        #return JsonResponse("ok", safe=False, status=status.HTTP_200_OK)
-        response_data = {
-        "statusCode": "OK",
-        "message": "OK",
-        "content": "OK"
-        }
-    
+        PostSerializer(post)
+        # return JsonResponse("ok", safe=False, status=status.HTTP_200_OK)
+        response_data = {"statusCode": "OK", "message": "OK", "content": "OK"}
+
         return JsonResponse(response_data, status=status.HTTP_200_OK, safe=False)
 
     else:
@@ -264,14 +228,14 @@ def modify(request):
             # JSON 데이터를 파싱합니다.
             data = json.loads(request.body)
             post_id = data.get("post_id")
-            
+
             # post_id로 Post 객체를 가져오거나 404 오류를 반환합니다.
             post = get_object_or_404(Post, post_id=post_id)
 
             # 데이터를 업데이트합니다.
             post.post_text = data.get("text", post.post_text)
             post.post_img = data.get("img", post.post_img)
-            #post.post_date = data.get("date", post.post_date)
+            # post.post_date = data.get("date", post.post_date)
             post.post_likes = data.get("likes", post.post_likes)
             post.post_score = data.get("score", post.post_score)
             post.post_hashtag = data.get("hashtag", post.post_hashtag)
@@ -284,54 +248,45 @@ def modify(request):
 
             # 객체를 직렬화합니다.
             serializer = PostSerializer(post)
-            
+
             # 직렬화된 데이터를 JSON 응답으로 반환합니다.
             #
             # return JsonResponse(serializer.data, safe=False, status=200)
-            response_data = {
-            "statusCode": "OK",
-            "message": "OK",
-            "content": serializer.data
-        }
-    
+            response_data = {"statusCode": "OK", "message": "OK", "content": serializer.data}
+
             return JsonResponse(response_data, status=status.HTTP_200_OK, safe=False)
 
-        
         except json.JSONDecodeError:
             return JsonResponse({"error": "Invalid JSON format."}, status=400)
-        
+
         except KeyError as e:
             return JsonResponse({"error": f"Missing key: {str(e)}"}, status=400)
-        
+
     else:
         return JsonResponse({"error": "modify: Only POST requests are allowed."}, status=404)
 
 
 def delete(request, id):
-    
-    try:
+    if request.method == "DELETE":
+        try:
             # 특정 포스트 객체를 가져옵니다. 없으면 404를 반환합니다.
-        post = get_object_or_404(Post, post_id=id)  # 필드 이름이 'id'인지 'post_id'인지 확인하세요.
-            
+            post = get_object_or_404(Post, post_id=id)  # 필드 이름이 'id'인지 'post_id'인지 확인하세요.
+
             # 객체를 삭제합니다.
-        post.delete()
+            post.delete()
 
-        #return JsonResponse("ok", safe=False, status=status.HTTP_200_OK)
-        response_data = {
-        "statusCode": "OK",
-        "message": "OK",
-        "content": "OK"
-        }
-    
-        return JsonResponse(response_data, status=status.HTTP_200_OK, safe=False)
+            # return JsonResponse("ok", safe=False, status=status.HTTP_200_OK)
+            response_data = {"statusCode": "OK", "message": "OK", "content": "OK"}
 
+            return JsonResponse(response_data, status=status.HTTP_200_OK, safe=False)
 
-    except Exception as e:
-        return JsonResponse({"error": f"An unexpected error occurred: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-    
+        except Exception as e:
+            return JsonResponse({"error": f"An unexpected error occurred: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
 
 # 검색기능
 def search_post(request, sorttype, text):
+    savelog(text, 1)  # id=1
     print(sorttype, text)
     if not text.strip():  # 빈 문자열이나 공백만 있는 경우 처리
         return JsonResponse({"error": "No search text provided."}, status=status.HTTP_400_BAD_REQUEST)
@@ -371,14 +326,10 @@ def search_post(request, sorttype, text):
     # Serialize the result
     serializer = PostSerializer(post_queryset, many=True)
 
-    #return JsonResponse(serializer.data, safe=False, status=status.HTTP_200_OK)
+    # return JsonResponse(serializer.data, safe=False, status=status.HTTP_200_OK)
 
-    response_data = {
-        "statusCode": "OK",
-        "message": "OK",
-        "content": serializer.data
-    }
-    
+    response_data = {"statusCode": "OK", "message": "OK", "content": serializer.data}
+
     return JsonResponse(response_data, status=status.HTTP_200_OK, safe=False)
 
 
@@ -386,7 +337,7 @@ def mypost(request, id):
     try:
         # 유저 ID로 포스트를 필터링
         print(f"Fetching posts for user ID: {id}")
-        post = Post.objects.filter(user_id=id)
+        post = Post.objects.filter(user_id=id).order_by("-post_date")
         print(f"Posts found: {post.count()}")
 
         # 시리얼라이저를 사용해 데이터를 직렬화
@@ -395,14 +346,9 @@ def mypost(request, id):
 
         #
         # return JsonResponse(serializer.data, safe=False, status=status.HTTP_200_OK)
-        response_data = {
-        "statusCode": "OK",
-        "message": "OK",
-        "content": serializer.data
-    }
-    
-        return JsonResponse(response_data, status=status.HTTP_200_OK, safe=False)
+        response_data = {"statusCode": "OK", "message": "OK", "content": serializer.data}
 
+        return JsonResponse(response_data, status=status.HTTP_200_OK, safe=False)
 
     except Exception as e:
         print(f"An error occurred: {str(e)}")
@@ -413,13 +359,9 @@ def mypost(request, id):
 def comment(request, id):
     comment = Comments.objects.filter(post_id=id)
     serializer = CommentSerializer(comment, many=True)
-    #return JsonResponse(serializer.data,  safe=False,status=status.HTTP_200_OK)
-    response_data = {
-        "statusCode": "OK",
-        "message": "OK",
-        "content": serializer.data
-    }
-    
+    # return JsonResponse(serializer.data,  safe=False,status=status.HTTP_200_OK)
+    response_data = {"statusCode": "OK", "message": "OK", "content": serializer.data}
+
     return JsonResponse(response_data, status=status.HTTP_200_OK, safe=False)
 
 
@@ -443,14 +385,10 @@ def comment_write(request):
 
             # 시리얼라이저 사용
             serializer = CommentSerializer(com)
-            #return JsonResponse(serializer.data, status=status.HTTP_200_OK)
+            # return JsonResponse(serializer.data, status=status.HTTP_200_OK)
 
-            response_data = {
-            "statusCode": "OK",
-            "message": "OK",
-            "content": serializer.data
-            }
-    
+            response_data = {"statusCode": "OK", "message": "OK", "content": serializer.data}
+
             return JsonResponse(response_data, status=status.HTTP_200_OK, safe=False)
 
         except Exception as e:
@@ -459,3 +397,36 @@ def comment_write(request):
             return JsonResponse({"error": "An unexpected error occurred."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     else:
         return JsonResponse({"error": "Invalid HTTP method."}, status=status.HTTP_400_BAD_REQUEST)
+
+
+@csrf_exempt
+def savelog(text, id):
+    postlog = PostLog.objects.create(search_date=timezone.now(), search_text=text, user_id=id)
+    postlog.save()
+    response_data = {"statusCode": "OK", "message": "OK", "content": "OK"}
+
+    return JsonResponse(response_data, status=status.HTTP_200_OK, safe=False)
+
+
+@csrf_exempt
+def deletepostlog(request, id):
+    if request.method == "DELETE":
+        # 특정 포스트 객체를 가져옵니다. 없으면 404를 반환합니다.
+        postlog = get_object_or_404(PostLog, log_id=id)
+
+        # 객체를 삭제합니다.
+        postlog.delete()
+
+        # return JsonResponse("ok", safe=False, status=status.HTTP_200_OK)
+        response_data = {"statusCode": "OK", "message": "OK", "content": "OK"}
+
+        return JsonResponse(response_data, status=status.HTTP_200_OK, safe=False)
+
+
+def mypostlog(request, id):
+    postlog_list = PostLog.objects.filter(user_id=id)
+    serializer = PostLogSerializer(postlog_list, many=True)
+
+    response_data = {"statusCode": "OK", "message": "OK", "content": serializer.data}
+
+    return JsonResponse(response_data, status=status.HTTP_200_OK, safe=False)

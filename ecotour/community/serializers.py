@@ -21,6 +21,12 @@ class PostSerializer(serializers.ModelSerializer):
         fields = ["post_id", "post_text", "user_id", "post_score"]
 
 
+class PostLogSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = PostLog
+        fields = ["log_id", "search_date", "search_text", "user_id"]
+
+
 class CommentSerializer(serializers.ModelSerializer):
     class Meta:
         model = Comments
