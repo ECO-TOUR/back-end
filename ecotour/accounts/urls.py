@@ -6,6 +6,7 @@ from .views import (
     OauthKaKaoLoginAPIView,
     OauthKaKaoLogoutAPIView,
     OauthKaKaoSignoutAPIView,
+    PreferenceAPIView,
     SignUpAPIView,
     authorize_code_kakao,
     login_view,
@@ -30,5 +31,6 @@ urlpatterns = [
     path("api/oauth/kakao/login/", OauthKaKaoLoginAPIView.as_view(), name="api_oauth_kakao_login"),
     path("api/oauth/kakao/logout/", OauthKaKaoLogoutAPIView.as_view(), name="api_oauth_kakao_logout"),
     path("api/oauth/kakao/signout/", OauthKaKaoSignoutAPIView.as_view(), name="api_oauth_kakao_signout"),
+    path("api/preference/", PreferenceAPIView.as_view(), name="api_preference"),
     path("profile/", profile, name="profile"),
 ]
