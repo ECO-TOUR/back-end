@@ -1,12 +1,16 @@
 import jwt
 from accounts.models import CustomUser
 from common.decorators import jwt_required
+from community.models import *
 from django.conf import settings
 from django.contrib.auth import get_user_model
+from django.http import JsonResponse
 from django.utils.decorators import method_decorator
 from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.views import APIView
+
+from .serializers import *
 
 User = get_user_model()
 
@@ -44,3 +48,11 @@ class mypageInguireAPIView(APIView):
         response = Response(response_data, status=status.HTTP_200_OK)
 
         return response
+
+
+def inquirenoti(request):
+    noti_list = Notification.objects.all().order_by("-noti_date")
+    serializer = NotiSerializer(noti_list, many=True)
+    response_data = {"statusCode": "OK", "message": "OK", "content": serializer.data}
+
+    return JsonResponse(response_data, status=status.HTTP_200_OK, safe=False)

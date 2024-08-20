@@ -1,8 +1,10 @@
 from community.models import TourKeyword, TourLog, TourPlace
+from community.serializers import *
 from django.db.models import F
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404
 from django.views.decorators.csrf import csrf_exempt
+from rest_framework import status
 
 
 # 검색
@@ -90,3 +92,18 @@ def autocomplete_search(request):
             return JsonResponse({"statusCode": 200, "autocompleteResults": []})
 
     return JsonResponse({"statusCode": 400, "message": "잘못된 요청입니다.", "error": "요청 메소드는 GET이어야 합니다."}, status=400)
+
+
+def postbytour(request, id):
+    post_list = Post.objects.filter(tour_id=id)
+
+    serializer = PostSerializer(post_list, many=True)
+    summ = 0
+    cnt = 0
+    for post in post_list:
+        cnt += 1
+        summ += post.post_score
+
+    response_data = {"statusCode": "OK", "message": "OK", "content": {"data": serializer.data, "avg_score": summ / cnt, "count": cnt}}
+
+    return JsonResponse(response_data, status=status.HTTP_200_OK, safe=False)

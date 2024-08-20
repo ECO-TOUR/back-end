@@ -8,4 +8,5 @@ urlpatterns = [
     path("place/log/<int:user_id>/<int:log_id>/delete", views.delete_search_history, name="delete_search_history"),
     path("autocomplete/", views.autocomplete_search, name="autocomplete_search"),
     path("place/log/rank", views.get_top_search_terms, name="get_top_search_terms"),
+    path("api/postbytour/<int:id>/", views.postbytour),
 ]
