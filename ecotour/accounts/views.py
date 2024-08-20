@@ -176,15 +176,23 @@ def oauth_kakao_login_view(request):
     request.session["user_id"] = int(response_oicd["sub"])
 
     # Authenticate user
-    user = authenticate(request, username=response_oicd["nickname"], password="dummy")
+
+    try:
+        nickname = response_oicd["nickname"]
+    except BaseException:
+        nickname = response_oicd["sub"]
+
+    try:
+        photo = response_oicd["picture"]
+    except BaseException:
+        photo = None
+
+    user = authenticate(request, username=nickname, password="dummy")
 
     if user is None:
         # If user does not exist, create a new one
         user = User.objects.create_user(
-            username=response_oicd["nickname"],
-            password="dummy",  # No password needed for OAuth login
-            nickname=response_oicd["nickname"],
-            profile_photo=response_oicd["picture"],
+            username=nickname, password="dummy", nickname=nickname, profile_photo=photo  # No password needed for OAuth login
         )
         # Log the user in
     login(request, user)
