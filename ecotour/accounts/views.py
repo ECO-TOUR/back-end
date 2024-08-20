@@ -175,8 +175,6 @@ def oauth_kakao_login_view(request):
     response_oicd = call("GET", "https://kapi.kakao.com/v1/oidc/userinfo", {}, {"Authorization": f'Bearer {response_token["access_token"]}'})
     request.session["user_id"] = int(response_oicd["sub"])
 
-    # Authenticate user
-
     try:
         nickname = response_oicd["nickname"]
     except BaseException:
@@ -187,6 +185,7 @@ def oauth_kakao_login_view(request):
     except BaseException:
         photo = None
 
+    # Authenticate user
     user = authenticate(request, username=nickname, password="dummy")
 
     if user is None:
@@ -194,7 +193,8 @@ def oauth_kakao_login_view(request):
         user = User.objects.create_user(
             username=nickname, password="dummy", nickname=nickname, profile_photo=photo  # No password needed for OAuth login
         )
-        # Log the user in
+
+    # Log the user in
     login(request, user)
     # Issue JWT token
     token_instance = RefreshTokenModel.create_token(user)
@@ -261,16 +261,23 @@ class OauthKaKaoLoginAPIView(APIView):
             # Fetch user info from Kakao
             response_oicd = call("GET", "https://kapi.kakao.com/v1/oidc/userinfo", {}, {"Authorization": f"Bearer {kakao_access_token}"})
 
-            # Authenticate the user
-            user = authenticate(request, username=response_oicd["nickname"], password="dummy")
+            try:
+                nickname = response_oicd["nickname"]
+            except BaseException:
+                nickname = response_oicd["sub"]
+
+            try:
+                photo = response_oicd["picture"]
+            except BaseException:
+                photo = None
+
+            # Authenticate user
+            user = authenticate(request, username=nickname, password="dummy")
 
             if user is None:
-                # If the user does not exist, create a new one
+                # If user does not exist, create a new one
                 user = User.objects.create_user(
-                    username=response_oicd["nickname"],
-                    password="dummy",  # No password needed for OAuth login
-                    nickname=response_oicd["nickname"],
-                    profile_photo=response_oicd["picture"],
+                    username=nickname, password="dummy", nickname=nickname, profile_photo=photo  # No password needed for OAuth login
                 )
 
             user.oauth_kakao_access_token = kakao_access_token
