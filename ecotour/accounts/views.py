@@ -5,6 +5,7 @@ import environ
 import jwt
 import requests
 from common.decorators import jwt_required
+from community.models import Preference, User_Preference
 from django.conf import settings
 from django.contrib.auth import authenticate, get_user_model, login, logout
 from django.http import JsonResponse
@@ -174,18 +175,26 @@ def oauth_kakao_login_view(request):
     response_oicd = call("GET", "https://kapi.kakao.com/v1/oidc/userinfo", {}, {"Authorization": f'Bearer {response_token["access_token"]}'})
     request.session["user_id"] = int(response_oicd["sub"])
 
+    try:
+        nickname = response_oicd["nickname"]
+    except BaseException:
+        nickname = response_oicd["sub"]
+
+    try:
+        photo = response_oicd["picture"]
+    except BaseException:
+        photo = None
+
     # Authenticate user
-    user = authenticate(request, username=response_oicd["nickname"], password="dummy")
+    user = authenticate(request, username=nickname, password="dummy")
 
     if user is None:
         # If user does not exist, create a new one
         user = User.objects.create_user(
-            username=response_oicd["nickname"],
-            password="dummy",  # No password needed for OAuth login
-            nickname=response_oicd["nickname"],
-            profile_photo=response_oicd["picture"],
+            username=nickname, password="dummy", nickname=nickname, profile_photo=photo  # No password needed for OAuth login
         )
-        # Log the user in
+
+    # Log the user in
     login(request, user)
     # Issue JWT token
     token_instance = RefreshTokenModel.create_token(user)
@@ -252,16 +261,23 @@ class OauthKaKaoLoginAPIView(APIView):
             # Fetch user info from Kakao
             response_oicd = call("GET", "https://kapi.kakao.com/v1/oidc/userinfo", {}, {"Authorization": f"Bearer {kakao_access_token}"})
 
-            # Authenticate the user
-            user = authenticate(request, username=response_oicd["nickname"], password="dummy")
+            try:
+                nickname = response_oicd["nickname"]
+            except BaseException:
+                nickname = response_oicd["sub"]
+
+            try:
+                photo = response_oicd["picture"]
+            except BaseException:
+                photo = None
+
+            # Authenticate user
+            user = authenticate(request, username=nickname, password="dummy")
 
             if user is None:
-                # If the user does not exist, create a new one
+                # If user does not exist, create a new one
                 user = User.objects.create_user(
-                    username=response_oicd["nickname"],
-                    password="dummy",  # No password needed for OAuth login
-                    nickname=response_oicd["nickname"],
-                    profile_photo=response_oicd["picture"],
+                    username=nickname, password="dummy", nickname=nickname, profile_photo=photo  # No password needed for OAuth login
                 )
 
             user.oauth_kakao_access_token = kakao_access_token
@@ -411,6 +427,42 @@ class OauthKaKaoSignoutAPIView(APIView):
             return response
 
         return Response({"delete error"}, status=status.HTTP_400_BAD_REQUEST)
+
+
+@method_decorator(jwt_required, name="dispatch")
+class PreferenceAPIView(APIView):
+    def post(self, request, *args, **kwargs):
+        # Get the user ID from the request (set by the jwt_required decorator)
+        access_token = request.COOKIES.get("access_token")
+
+        payload = jwt.decode(access_token, settings.SECRET_KEY, algorithms=["HS256"])
+
+        user_id = payload.get("user_id")
+
+        # Retrieve the user from the database
+        try:
+            user = CustomUser.objects.get(user_id=user_id)
+        except CustomUser.DoesNotExist:
+            return Response({"error": "User not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        preference_ids = request.data.get("preference")
+
+        # Save each preference for the user
+        for preference_id in preference_ids:
+            try:
+                preference = Preference.objects.get(preference_id=preference_id)
+                User_Preference.objects.create(user=user, preference=preference)
+            except Preference.DoesNotExist:
+                return Response({"error": f"Preference ID {preference_id} not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        response_data = {
+            "statusCode": 200,
+            "message": "OK",
+            "content": {"message": "선호키워드 조사가 성공적으로 반영되었습니다", "preference": preference_ids},
+        }
+
+        # Return the response
+        return Response(response_data, status=status.HTTP_200_OK)
 
 
 def profile(request):

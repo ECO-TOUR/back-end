@@ -43,6 +43,7 @@ def toggle_like(request, user_id):
         )
     return JsonResponse({"statusCode": 400, "message": "잘못된 요청입니다.", "error": "요청 메소드는 POST여야 합니다."}, status=400)
 
+
 @csrf_exempt
 # @login_required
 def liked_places(request, user_id):
