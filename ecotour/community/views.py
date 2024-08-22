@@ -7,7 +7,6 @@ from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
 from rest_framework import status
 from rest_framework.decorators import api_view
-from rest_framework.response import Response
 
 from .models import *
 from .serializers import *
@@ -31,9 +30,9 @@ def postlist(request):
     serializer = PostSerializer(post_list, many=True)
     # return JsonResponse(serializer.data, safe=False, status=status.HTTP_200_OK)
 
-    response_data = {"statusCode": "OK", "message": "OK", "content": serializer}
+    response_data = {"statusCode": "OK", "message": "OK", "content": serializer.data}
 
-    return Response(response_data, status=status.HTTP_200_OK)
+    return JsonResponse(response_data, status=status.HTTP_200_OK)
 
 
 def tourkeyword(request):
