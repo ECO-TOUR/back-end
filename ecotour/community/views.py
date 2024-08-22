@@ -26,7 +26,7 @@ from .serializers import *
 
 
 def postlist(request):
-    post_list = Post.objects.all().order_by("-post_date")
+    post_list = Post.objects.all().order_by("-last_modified")
     serializer = PostSerializer(post_list, many=True)
     # return JsonResponse(serializer.data, safe=False, status=status.HTTP_200_OK)
 
@@ -265,6 +265,7 @@ def modify(request):
         return JsonResponse({"error": "modify: Only POST requests are allowed."}, status=404)
 
 
+@csrf_exempt
 def delete(request, id):
     if request.method == "DELETE":
         try:
@@ -364,6 +365,14 @@ def comment(request, id):
     return JsonResponse(response_data, status=status.HTTP_200_OK, safe=False)
 
 
+def addcommcnt(post_id):
+    po = Post.objects.get(post_id=post_id)
+    cnt = int(po.comm_cnt)
+    po.comm_cnt = cnt + 1
+    po.save()
+    return
+
+
 @csrf_exempt
 def comment_write(request):
     if request.method == "POST":
@@ -387,7 +396,7 @@ def comment_write(request):
             # return JsonResponse(serializer.data, status=status.HTTP_200_OK)
 
             response_data = {"statusCode": "OK", "message": "OK", "content": serializer.data}
-
+            addcommcnt(post_id)
             return JsonResponse(response_data, status=status.HTTP_200_OK, safe=False)
 
         except Exception as e:

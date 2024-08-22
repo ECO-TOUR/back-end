@@ -114,6 +114,7 @@ class Post(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="userpost")
     post_view = models.IntegerField(default=0)
     last_modified = models.DateTimeField()
+    comm_cnt = models.IntegerField(default=0)
 
     class Meta:
         db_table = "Post"
