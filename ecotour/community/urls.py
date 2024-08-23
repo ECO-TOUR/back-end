@@ -8,7 +8,7 @@ urlpatterns = [
     path("api/tourkeyword/", views.tourkeyword),
     path("api/place2keyword/<int:id>/", views.place2keyword),
     path("api/search/", views.search),
-    path("api/postinquire/", views.postlist),
+    path("api/postinquire/<int:id>/", views.postlist),
     path("api/postbest/", views.best),
     path("api/userpre/<int:id>/", views.userpre),
     path("api/postwrite/", views.write, name="api_write"),

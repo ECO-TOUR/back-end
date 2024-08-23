@@ -25,14 +25,30 @@ from .serializers import *
 #     return HttpResponse(response_content)
 
 
-def postlist(request):
+def postlist(request, id):
+    # 모든 게시물을 최근 수정된 순으로 가져오기
     post_list = Post.objects.all().order_by("-last_modified")
+
+    # 게시물 리스트를 직렬화
     serializer = PostSerializer(post_list, many=True)
-    # return JsonResponse(serializer.data, safe=False, status=status.HTTP_200_OK)
 
-    response_data = {"statusCode": "OK", "message": "OK", "content": serializer.data}
+    # 해당 사용자가 좋아요를 누른 게시물의 ID 리스트 가져오기
+    plike = PostLikes.objects.filter(user_id=id).values_list("post_id", flat=True)
 
-    return JsonResponse(response_data, status=status.HTTP_200_OK)
+    # 직렬화된 데이터를 리스트로 가져오기
+    d = serializer.data
+
+    # 각 게시물에 대해 좋아요 여부를 추가
+    for x in d:
+        if x["post_id"] in plike:  # 게시물 ID가 plike 리스트에 있는지 확인
+            x["like"] = "yes"
+        else:
+            x["like"] = "no"
+
+    # 응답 데이터 생성
+    response_data = {"statusCode": "OK", "message": "OK", "content": d}
+
+    return JsonResponse(response_data, safe=False)
 
 
 def tourkeyword(request):

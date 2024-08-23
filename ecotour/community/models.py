@@ -120,6 +120,17 @@ class Post(models.Model):
         db_table = "Post"
 
 
+# PostLikes 모델
+class PostLikes(models.Model):
+    plikes_id = models.AutoField(primary_key=True)
+    like_date = models.DateTimeField(auto_now_add=True)
+    post = models.ForeignKey(Post, on_delete=models.CASCADE, related_name="postlike")
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="userlikepost")
+
+    class Meta:
+        db_table = "PostLikes"
+
+
 # Notification 모델
 class Notification(models.Model):
     noti_id = models.AutoField(primary_key=True)
