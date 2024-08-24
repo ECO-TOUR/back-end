@@ -1,12 +1,12 @@
 import json
-from django.shortcuts import get_object_or_404
+
 from community.models import Likes, TourPlace
 from django.contrib.auth import get_user_model
+from django.core.exceptions import ObjectDoesNotExist
+from django.db.models import Avg
+from django.http import JsonResponse
 from django.shortcuts import get_object_or_404
 from django.views.decorators.csrf import csrf_exempt
-from django.http import JsonResponse, HttpResponseBadRequest, HttpResponseServerError
-from django.db.models import Avg
-from django.core.exceptions import ObjectDoesNotExist
 
 User = get_user_model()
 
@@ -45,12 +45,12 @@ def toggle_like(request, user_id):
         )
     return JsonResponse({"statusCode": 400, "message": "잘못된 요청입니다.", "error": "요청 메소드는 POST여야 합니다."}, status=400)
 
-@csrf_exempt
 
+@csrf_exempt
 def liked_places(request, user_id):
     try:
         # 특정 사용자가 찜한 관광지 목록 조회
-        liked_places = Likes.objects.filter(user_id=user_id).select_related('tour')
+        liked_places = Likes.objects.filter(user_id=user_id).select_related("tour")
 
         # 사용자가 찜한 관광지가 없을 경우 400 오류 반환
         if not liked_places.exists():
@@ -61,16 +61,18 @@ def liked_places(request, user_id):
         for like in liked_places:
             tour = like.tour
             # 특정 관광지와 연결된 게시글들의 평균 점수를 계산
-            avg_post_score = tour.tourplacepost.aggregate(Avg('post_score'))['post_score__avg'] or 0
-            results.append({
-                "likes_id": like.likes_id,
-                "tour_id": tour.tour_id,
-                "tour_name": tour.tour_name,
-                "tour_img": tour.tour_img,
-                "tour_location": tour.tour_location,
-                "tour_viewcnt": tour.tour_viewcnt,
-                "avg_post_score": avg_post_score,  # 평균 점수가 없으면 0으로 설정
-            })
+            avg_post_score = tour.tourplacepost.aggregate(Avg("post_score"))["post_score__avg"] or 0
+            results.append(
+                {
+                    "likes_id": like.likes_id,
+                    "tour_id": tour.tour_id,
+                    "tour_name": tour.tour_name,
+                    "tour_img": tour.tour_img,
+                    "tour_location": tour.tour_location,
+                    "tour_viewcnt": tour.tour_viewcnt,
+                    "avg_post_score": avg_post_score,  # 평균 점수가 없으면 0으로 설정
+                }
+            )
 
         return JsonResponse(results, safe=False)
 

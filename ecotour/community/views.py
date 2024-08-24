@@ -222,7 +222,7 @@ def write(request):
             # Save the image file to the storage system (e.g., S3)
             full_path = default_storage.save(path, img_file)
             # Store the file path in the post_img field
-            post.post_img = full_path
+            post.post_img = settings.MEDIA_URL.replace("media/", "") + full_path
             # Save the post again with the image path
             post.save()
 

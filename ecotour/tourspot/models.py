@@ -1,6 +1,7 @@
 # Create your models here.
 from django.db import models
 
+
 class TempTourData(models.Model):
     tour_location = models.CharField(max_length=255)
     areacode = models.IntegerField()
@@ -16,7 +17,7 @@ class TempTourData(models.Model):
     tour_name = models.CharField(max_length=100)
 
     class Meta:
-        db_table = 'temp_tour_data'  # 데이터베이스 테이블 이름 설정
+        db_table = "temp_tour_data"  # 데이터베이스 테이블 이름 설정
 
     def __str__(self):
         return self.tour_name

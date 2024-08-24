@@ -129,8 +129,6 @@ class Post(models.Model):
     last_modified = models.DateTimeField()
     comm_cnt = models.IntegerField(default=0)
 
-
-
     class Meta:
         db_table = "Post"
 
@@ -162,8 +160,8 @@ class TourLog(models.Model):
     log_id = models.AutoField(primary_key=True)
     search_date = models.DateTimeField(auto_now_add=True)
     search_text = models.CharField(max_length=100)
-    user = models.ForeignKey(settings.AUTH_USER_MODEL, null=True,blank=True,on_delete=models.CASCADE, related_name="usertourlog")
- 
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.CASCADE, related_name="usertourlog")
+
     class Meta:
         db_table = "TourLog"
 
