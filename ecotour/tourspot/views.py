@@ -1,61 +1,136 @@
-from community.models import TourKeyword, TourLog, TourPlace
+from community.models import TourKeyword, TourLog, TourPlace, Post
 from community.serializers import *
 from django.db.models import F
+from django.db.models import Avg
+from django.db.models import Count
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404
 from django.views.decorators.csrf import csrf_exempt
 from rest_framework import status
 
 
-# 검색
-# @login_required  로그인이 필요한 경우 사용
+#관광지 검색
+@csrf_exempt
 def search_tour_places(request):
     if request.method == "GET":
-        search_term = request.GET.get("search", "")  # 쿼리 파라미터로 검색어를 받음
+        search_term = request.GET.get("search", "").strip()
+        if not search_term:
+            return JsonResponse({"statusCode": 400, "message": "검색어가 유효하지 않습니다."}, status=400)
 
-        # 검색 기록 저장
-        if search_term and request.user.is_authenticated:
-            TourLog.objects.create(user=request.user, tourlog_text=search_term)
+        # 관광지 검색어와 일치하는 관광지 찾기
+        matching_places = TourPlace.objects.filter(tour_name__icontains=search_term)
+        
+        # 검색어를 TourLog에 저장
+        if request.user.is_authenticated:
+            TourLog.objects.create(user=request.user, search_text=search_term)
 
-        # 검색어 처리: TourKeyword의 search_count 업데이트
-        for keyword in TourKeyword.objects.all():
-            if len(set(keyword.keyword_name) & set(search_term)) >= 2:  # 두 글자 이상 겹치는지 확인
-                keyword.search_count = F("search_count") + 1  # search_count 증가
-                keyword.save()
+        # 관광지의 search_count 증가
+        TourPlace.objects.filter(tour_name__icontains=search_term).update(search_count=F('search_count') + 1)
 
-        # 관광지 검색
-        results = TourPlace.objects.filter(tour_name__icontains=search_term)
+        # 관광지 검색 결과 파싱 및 반환
+        search_results = []
+        for place in matching_places:
+            avg_score = Post.objects.filter(tour_id=place.tour_id).aggregate(Avg('post_score'))['post_score__avg'] or 0
+            search_count = TourLog.objects.filter(search_text=search_term).count()
 
-        # 검색 결과 반환
-        search_results = [
-            {
+            search_results.append({
                 "tour_id": place.tour_id,
                 "tour_name": place.tour_name,
-                "tour_location": place.tour_location,
-                "tour_info": place.tour_info,
                 "tour_img": place.tour_img,
-            }
-            for place in results
-        ]
+                "tour_location": place.tour_location,
+                "tour_viewcnt": place.tour_viewcnt,
+                "avg_score": avg_score,
+                "search_count": search_count
+            })
 
-        return JsonResponse({"statusCode": 200, "search_results": search_results})
+        return JsonResponse({"statusCode": 200, "search_results": search_results}, status=200)
 
     return JsonResponse({"statusCode": 400, "message": "잘못된 요청입니다.", "error": "요청 메소드는 GET이어야 합니다."}, status=400)
+
+
+# 관광지 상세정보
+@csrf_exempt
+def tour_place_detail(request, tour_id):
+    if request.method == "GET":
+        # 관광지 상세정보 조회
+        place = get_object_or_404(TourPlace, tour_id=tour_id)
+
+        # 관광지 조회수 증가
+        place.tour_viewcnt += 1
+        place.save()
+
+        # 별점 계산
+        avg_score = Post.objects.filter(tour_id=tour_id).aggregate(Avg('post_score'))['post_score__avg'] or 0
+
+        # 게시물 정보 조회
+        posts = Post.objects.filter(tour_id=tour_id).select_related('user')
+
+        # 게시물 정보 구성
+        post_details = [
+    {
+        "post_id": post.post_id,  # 게시물 ID
+        "post_text": post.post_text,  # 게시물 내용
+        "user_id": post.user_id,  # 사용자 ID
+        "post_score": avg_score,  # 게시물 점수
+        "post_img": post.post_img,  # 게시물 이미지 URL
+        "last_modified": post.last_modified.isoformat()  # 마지막 수정 시간 
+    }
+    for post in posts
+]
+        # 빈 문자열을 None으로 변환하는 함수
+        def empty_to_none(value):
+            return None if value == "" else value
+
+        # 상세정보 및 게시물 반환
+        place_detail = {
+            "tour_id": place.tour_id,
+            "tour_name": place.tour_name,
+            "tour_location": place.tour_location,
+            "tour_img": place.tour_img,
+            "tour_viewcnt": place.tour_viewcnt,
+            "tour_summary": place.tour_summary,
+            "tour_tel": empty_to_none(place.tour_tel),
+            "tour_telname": empty_to_none(place.tour_telname),
+            "tour_title": empty_to_none(place.tour_title),
+            "opening_hours": empty_to_none(place.opening_hours),
+            "tour_hours": empty_to_none(place.tour_hours),
+            "website": empty_to_none(place.website),
+            "fees": empty_to_none(place.fees),
+            "restrooms": empty_to_none(place.restrooms),
+            "parking": empty_to_none(place.parking),
+            "avg_score": avg_score,
+            "posts": post_details
+        }
+
+        return JsonResponse({"statusCode": 200, "place_detail": place_detail}, status=200)
+
+    return JsonResponse({"statusCode": 400, "message": "잘못된 요청입니다.", "error": "요청 메소드는 GET이어야 합니다."}, status=400)
+
 
 
 # 사용자별 검색 기록 조회
 # @login_required
+@csrf_exempt
 def get_search_history(request, user_id):
     if request.method == "GET":
-        # 특정 사용자의 검색 기록을 최신순으로 가져옴
-        search_history = TourLog.objects.filter(user_id=user_id).order_by("-search_date")
-        history = [log.search_text for log in search_history]
+        try:
+            # 특정 사용자의 검색 기록을 최신순으로 가져옴
+            search_history = TourLog.objects.filter(user_id=user_id).order_by("-search_date")
+            
+            # 검색 기록을 파싱하여 JSON 응답을 준비
+            history = [{
+                "search_text": log.search_text,
+                "search_date": log.search_date.isoformat()  # ISO 포맷으로 날짜를 문자열로 변환
+            } for log in search_history]
 
-        return JsonResponse({"statusCode": 200, "search_history": history})
+            return JsonResponse({"statusCode": 200, "search_history": history}, status=200)
+
+        except Exception as e:
+            # 오류 발생 시 로그에 기록하고 JSON 응답을 반환
+            logger.error(f"Error fetching search history for user {user_id}: {str(e)}")
+            return JsonResponse({"statusCode": 500, "message": "서버 오류입니다.", "error": str(e)}, status=500)
 
     return JsonResponse({"statusCode": 400, "message": "잘못된 요청입니다.", "error": "요청 메소드는 GET이어야 합니다."}, status=400)
-
-
 # 검색 기록 삭제
 # @login_required
 @csrf_exempt
@@ -70,16 +145,22 @@ def delete_search_history(request, user_id, log_id):
 
 
 # 검색어 순위
+@csrf_exempt
 def get_top_search_terms(request):
     if request.method == "GET":
-        # 상위 10개의 검색어 순위 조회
-        top_terms = TourKeyword.objects.order_by("-search_count")[:10]
-        top_searches = [{"term": term.keyword_name, "search_count": term.search_count} for term in top_terms]
+        # 상위 10개의 관광지 검색어 순위 조회 (search_count 기준으로)
+        top_places = TourPlace.objects.order_by("-search_count")[:10]
+        top_searches = [
+            {
+                "tour_name": place.tour_name,
+                "search_count": place.search_count
+            }
+            for place in top_places
+        ]
 
         return JsonResponse({"statusCode": 200, "top_search_terms": top_searches})
 
     return JsonResponse({"statusCode": 400, "message": "잘못된 요청입니다.", "error": "요청 메소드는 GET이어야 합니다."}, status=400)
-
 
 # 검색어 자동완성
 def autocomplete_search(request):

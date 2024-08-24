@@ -18,6 +18,19 @@ class TourPlace(models.Model):
     tour_telname = models.CharField(max_length=45, null=True, blank=True)
     tour_title = models.CharField(max_length=45, null=True, blank=True)
 
+    # 새로운 필드 추가
+    areacode = models.IntegerField(null=True, blank=True)  # 'int'에 맞음
+    createdtime = models.DateTimeField(null=True, blank=True)  # 'datetime'에 맞음
+    sigungucode = models.IntegerField(null=True, blank=True)  # 'int'에 맞음
+    opening_hours = models.CharField(max_length=255, null=True, blank=True)  # 'varchar(255)'에 맞음
+    tour_hours = models.CharField(max_length=255, null=True, blank=True)  # 'varchar(255)'에 맞음
+    website = models.CharField(max_length=255, null=True, blank=True)  # 'varchar(255)'에 맞음
+    fees = models.CharField(max_length=255, null=True, blank=True)  # 'varchar(255)'에 맞음
+    restrooms = models.CharField(max_length=255, null=True, blank=True)  # 'varchar(255)'에 맞음
+    accessibility = models.CharField(max_length=255, null=True, blank=True)  # 'varchar(255)'에 맞음
+    parking = models.CharField(max_length=255, null=True, blank=True)  # 'varchar(255)'에 맞음
+    search_count = models.PositiveIntegerField(default=0)
+
     class Meta:
         db_table = "TourPlace"
 
@@ -116,6 +129,8 @@ class Post(models.Model):
     last_modified = models.DateTimeField()
     comm_cnt = models.IntegerField(default=0)
 
+
+
     class Meta:
         db_table = "Post"
 
@@ -145,10 +160,10 @@ class Notification(models.Model):
 # tourLog 모델
 class TourLog(models.Model):
     log_id = models.AutoField(primary_key=True)
-    search_date = models.DateField()
+    search_date = models.DateTimeField(auto_now_add=True)
     search_text = models.CharField(max_length=100)
-    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="usertourlog")
-
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, null=True,blank=True,on_delete=models.CASCADE, related_name="usertourlog")
+ 
     class Meta:
         db_table = "TourLog"
 
