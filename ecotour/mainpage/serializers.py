@@ -12,4 +12,4 @@ class BannerSerializer(serializers.ModelSerializer):
 class TourPlaceSerializer(serializers.ModelSerializer):
     class Meta:
         model = TourPlace
-        fields = ["tour_viewcnt_month", "tour_id", "tour_name"]
+        fields = ["tour_viewcnt_month", "tour_id", "tour_name", "tour_location"]
