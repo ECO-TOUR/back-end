@@ -172,7 +172,7 @@ def userpre(request, id):
 
 # 점수 높은 순 top3
 def best(request):
-    post_list = Post.objects.all().order_by("-post_score")
+    post_list = Post.objects.all().order_by("-post_likes")
     post_list = post_list[:3]
     serializer = PostSerializer(post_list, many=True)
 
