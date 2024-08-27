@@ -8,8 +8,13 @@ from django.views.decorators.csrf import csrf_exempt
 from rest_framework import status
 from rest_framework.decorators import api_view
 
+#새로 추가
+from django.db.models import F
+from django.contrib.auth import get_user_model
+
 from .models import *
 from .serializers import *
+User = get_user_model()
 
 # 모든 유저가 쓴 post를 별명과 함께 출력하기
 # <내가 쓴 글>
@@ -454,3 +459,45 @@ def mypostlog(request, id):
     response_data = {"statusCode": "OK", "message": "OK", "content": serializer.data}
 
     return JsonResponse(response_data, status=status.HTTP_200_OK, safe=False)
+
+
+#게시글 좋아요
+@csrf_exempt
+def toggle_post_like(request, user_id):
+    if request.method == "POST":
+        data = json.loads(request.body)
+        post_id = data.get("post_id")
+        post = get_object_or_404(Post, post_id=post_id)
+        user = get_object_or_404(User, user_id=user_id)
+        
+        like, created = PostLikes.objects.get_or_create(user=user, post=post)
+        if not created:
+            # 이미 좋아요를 누른 경우, 좋아요 취소 및 post_likes 감소
+            like.delete()
+            post.post_likes = F('post_likes') - 1
+            post.save(update_fields=['post_likes'])
+            post.refresh_from_db()  # 데이터베이스에서 최신 값을 다시 가져옴
+            return JsonResponse(
+                {
+                    "statusCode": 200,
+                    "message": "게시글에서 좋아요가 취소되었습니다.",
+                    "status": "unliked",
+                    "post_id": post_id,
+                    "post_likes": post.post_likes,
+                }
+            )
+        
+        # 좋아요 추가 및 post_likes 증가
+        post.post_likes = F('post_likes') + 1
+        post.save(update_fields=['post_likes'])
+        post.refresh_from_db()  # 데이터베이스에서 최신 값을 다시 가져옴
+        return JsonResponse(
+            {
+                "statusCode": 200,
+                "message": "게시글에 좋아요가 추가되었습니다.",
+                "status": "liked",
+                "post_id": post_id,
+                "post_likes": post.post_likes,
+            }
+        )
+    return JsonResponse({"statusCode": 400, "message": "잘못된 요청입니다.", "error": "요청 메소드는 POST여야 합니다."}, status=400)
