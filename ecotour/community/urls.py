@@ -21,4 +21,6 @@ urlpatterns = [
     # path('example/', ExampleView.as_view(), name='example'),
     path("api/postlogdelete/<int:id>/", views.deletepostlog),
     path("api/mypostlog/<int:id>/", views.mypostlog),
+
+    path("api/postlike/<int:user_id>/", views.toggle_post_like, name="toggle_post_like"),
 ]

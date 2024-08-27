@@ -135,7 +135,7 @@ class Post(models.Model):
 
 # PostLikes 모델
 class PostLikes(models.Model):
-    plikes_id = models.AutoField(primary_key=True)
+    plike_id = models.AutoField(primary_key=True)
     like_date = models.DateTimeField(auto_now_add=True)
     post = models.ForeignKey(Post, on_delete=models.CASCADE, related_name="postlike")
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="userlikepost")
