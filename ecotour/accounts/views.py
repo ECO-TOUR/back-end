@@ -5,7 +5,7 @@ import environ
 import jwt
 import requests
 from common.decorators import jwt_required
-from community.models import Preference, User_Preference
+from community.models import TourKeyword, User_Preference
 from django.conf import settings
 from django.contrib.auth import authenticate, get_user_model, login, logout
 from django.http import JsonResponse
@@ -450,9 +450,9 @@ class PreferenceAPIView(APIView):
         # Save each preference for the user
         for preference_id in preference_ids:
             try:
-                preference = Preference.objects.get(preference_id=preference_id)
+                preference = TourKeyword.objects.get(keyword_id=preference_id)
                 User_Preference.objects.create(user=user, preference=preference)
-            except Preference.DoesNotExist:
+            except TourKeyword.DoesNotExist:
                 return Response({"error": f"Preference ID {preference_id} not found"}, status=status.HTTP_404_NOT_FOUND)
 
         response_data = {
