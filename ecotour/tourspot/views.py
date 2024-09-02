@@ -1,3 +1,5 @@
+import logging
+
 from community.models import Post, TourLog, TourPlace
 from community.serializers import *
 from django.db.models import Avg, F
@@ -5,7 +7,6 @@ from django.http import JsonResponse
 from django.shortcuts import get_object_or_404
 from django.views.decorators.csrf import csrf_exempt
 from rest_framework import status
-import logging
 
 
 # 관광지 검색
@@ -112,6 +113,7 @@ def tour_place_detail(request, tour_id):
 # 사용자별 검색 기록 조회
 logger = logging.getLogger(__name__)
 
+
 @csrf_exempt
 def get_search_history(request, user_id):
     if request.method == "GET":
@@ -123,7 +125,7 @@ def get_search_history(request, user_id):
                     "log_id": log.log_id,
                     "tour_id": log.tour_id,  # 투어 ID 참조 수정
                     "search_text": log.search_text,
-                    "search_date": log.search_date.isoformat()
+                    "search_date": log.search_date.isoformat(),
                 }
                 for log in search_history
             ]
@@ -135,6 +137,7 @@ def get_search_history(request, user_id):
             return JsonResponse({"statusCode": 500, "message": "서버 오류입니다.", "error": str(e)}, status=500)
 
     return JsonResponse({"statusCode": 400, "message": "잘못된 요청입니다.", "error": "요청 메소드는 GET이어야 합니다."}, status=400)
+
 
 # 검색 기록 전체 삭제
 @csrf_exempt
@@ -171,12 +174,7 @@ def get_top_search_terms(request):
         # 상위 10개의 관광지 검색어 순위 조회 (search_count 기준으로)
         top_places = TourPlace.objects.order_by("-search_count")[:10]
         top_searches = [
-            {
-                "tour_id": place.tour_id,  # 투어 ID 추가
-                "tour_name": place.tour_name, 
-                "search_count": place.search_count
-            } 
-            for place in top_places
+            {"tour_id": place.tour_id, "tour_name": place.tour_name, "search_count": place.search_count} for place in top_places  # 투어 ID 추가
         ]
 
         return JsonResponse({"statusCode": 200, "top_search_terms": top_searches})

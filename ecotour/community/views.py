@@ -46,12 +46,15 @@ def postlist(request, id):
 
     # 각 게시물에 대해 좋아요 여부를 추가
     for x in d:
+        if x["post_img"] is not None:
+            x["post_img"] = x["post_img"][1:-1].replace('"', "").replace("'", "").split(", ")
         if x["post_id"] in plike:  # 게시물 ID가 plike 리스트에 있는지 확인
             x["like"] = "yes"
         else:
             x["like"] = "no"
 
     # 응답 데이터 생성
+
     response_data = {"statusCode": "OK", "message": "OK", "content": d}
 
     return JsonResponse(response_data, safe=False)
