@@ -82,22 +82,22 @@ class Banner(models.Model):
 
 
 # Preference 모델
-class Preference(models.Model):
-    preference_id = models.AutoField(primary_key=True)
-    preference_name = models.CharField(max_length=45)
+# class Preference(models.Model):
+#     preference_id = models.AutoField(primary_key=True)
+#     preference_name = models.CharField(max_length=45)
 
-    class Meta:
-        db_table = "Preference"
+#     class Meta:
+#         db_table = "Preference"
 
-    def __str__(self):
-        return self.preference_name
+#     def __str__(self):
+#         return self.preference_name
 
 
 # User_has_Preference 모델
 class User_Preference(models.Model):
     userpre_id = models.AutoField(primary_key=True)
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="user")
-    preference = models.ForeignKey(Preference, on_delete=models.CASCADE, related_name="preference")
+    preference = models.ForeignKey(TourKeyword, on_delete=models.CASCADE, related_name="preference")
 
     class Meta:
         db_table = "User_has_Preference"
@@ -135,7 +135,7 @@ class Post(models.Model):
 
 # PostLikes 모델
 class PostLikes(models.Model):
-    plikes_id = models.AutoField(primary_key=True)
+    plike_id = models.AutoField(primary_key=True)
     like_date = models.DateTimeField(auto_now_add=True)
     post = models.ForeignKey(Post, on_delete=models.CASCADE, related_name="postlike")
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="userlikepost")

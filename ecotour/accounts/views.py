@@ -1,3 +1,4 @@
+import json
 from datetime import timedelta
 from pathlib import Path
 
@@ -5,7 +6,7 @@ import environ
 import jwt
 import requests
 from common.decorators import jwt_required
-from community.models import Preference, User_Preference
+from community.models import TourKeyword, User_Preference
 from django.conf import settings
 from django.contrib.auth import authenticate, get_user_model, login, logout
 from django.http import JsonResponse
@@ -227,94 +228,71 @@ def oauth_kakao_logout_view(request):
 
 class OauthKaKaoLoginAPIView(APIView):
     def post(self, request, *args, **kwargs):
-        # Initialize the serializer with incoming request data
-        serializer = KaKaoLoginSerializer(data=request.data)
 
-        # Validate the data (Deserialization)
-        if serializer.is_valid():
-            # Access the validated data
-            code = serializer.validated_data["code"]
+        data = json.loads(request.body)
+        response_token = data["body"]
+        # Handle error response from token request
+        if "error" in response_token:
+            return Response(response_token, status=status.HTTP_400_BAD_REQUEST)
+        kakao_access_token = response_token["access_token"]
+        kakao_refresh_token = response_token["refresh_token"]
+        kakao_id_token = response_token.get("id_token")
+        kakao_expires_in = response_token["refresh_token_expires_in"]
+        kakao_expires_at = timezone.now() + timedelta(seconds=kakao_expires_in)
 
-            if not code:
-                return JsonResponse({"error": "Code is required"}, status=400)
+        # Fetch user info from Kakao
+        response_oicd = call("GET", "https://kapi.kakao.com/v1/oidc/userinfo", {}, {"Authorization": f"Bearer {kakao_access_token}"})
+        try:
+            nickname = response_oicd["nickname"]
+        except BaseException:
+            nickname = response_oicd["sub"]
 
-            # Exchange the code for tokens
-            data = {
-                "grant_type": "authorization_code",
-                "client_id": env("KAKAO_CLIENT_ID"),
-                "redirect_uri": env("KAKAO_REDIRECT_URI_FRONT"),
-                "code": code,
-            }
-            header = {"Content-Type": "application/x-www-form-urlencoded"}
-            token_uri = "https://kauth.kakao.com/oauth/token"
-            response_token = call("POST", token_uri, data, header)
-            # Handle error response from token request
-            if "error" in response_token:
-                return Response(response_token, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            photo = response_oicd["picture"]
+        except BaseException:
+            photo = None
 
-            kakao_access_token = response_token["access_token"]
-            kakao_refresh_token = response_token["refresh_token"]
-            kakao_id_token = response_token.get("id_token")
-            kakao_expires_in = response_token["refresh_token_expires_in"]
-            kakao_expires_at = timezone.now() + timedelta(seconds=kakao_expires_in)
+        # Authenticate user
+        user = authenticate(request, username=nickname, password="dummy")
 
-            # Fetch user info from Kakao
-            response_oicd = call("GET", "https://kapi.kakao.com/v1/oidc/userinfo", {}, {"Authorization": f"Bearer {kakao_access_token}"})
+        if user is None:
+            # If user does not exist, create a new one
+            user = User.objects.create_user(
+                username=nickname, password="dummy", nickname=nickname, profile_photo=photo  # No password needed for OAuth login
+            )
 
-            try:
-                nickname = response_oicd["nickname"]
-            except BaseException:
-                nickname = response_oicd["sub"]
+        user.oauth_kakao_access_token = kakao_access_token
+        user.oauth_kakao_refresh_token = kakao_refresh_token
+        user.oauth_kakao_id_token = kakao_id_token
+        user.oauth_kakao_expires_at = kakao_expires_at
+        user.save()
 
-            try:
-                photo = response_oicd["picture"]
-            except BaseException:
-                photo = None
+        # Log the user in
+        login(request, user)
 
-            # Authenticate user
-            user = authenticate(request, username=nickname, password="dummy")
+        # Issue JWT token
+        token_instance = RefreshTokenModel.create_token(user)
+        refresh_token = token_instance.token
+        access_token_jwt = str(RefreshToken(token_instance.token).access_token)
 
-            if user is None:
-                # If user does not exist, create a new one
-                user = User.objects.create_user(
-                    username=nickname, password="dummy", nickname=nickname, profile_photo=photo  # No password needed for OAuth login
-                )
-
-            user.oauth_kakao_access_token = kakao_access_token
-            user.oauth_kakao_refresh_token = kakao_refresh_token
-            user.oauth_kakao_id_token = kakao_id_token
-            user.oauth_kakao_expires_at = kakao_expires_at
-            user.save()
-
-            # Log the user in
-            login(request, user)
-
-            # Issue JWT token
-            token_instance = RefreshTokenModel.create_token(user)
-            refresh_token = token_instance.token
-            access_token_jwt = str(RefreshToken(token_instance.token).access_token)
-
-            # Create the response data (Serialization)
-            response_data = {
-                "statusCode": 200,
-                "message": "OK",
-                "content": {
-                    "user": {
-                        "user_id": user.user_id,
-                        "username": user.username,
-                        "nickname": user.nickname,
-                        "profile_photo": (user.profile_photo if user.profile_photo else None),
-                    },
-                    "refresh_token": str(refresh_token),
-                    "access_token": access_token_jwt,
+        # Create the response data (Serialization)
+        response_data = {
+            "statusCode": 200,
+            "message": "OK",
+            "content": {
+                "user": {
+                    "user_id": user.user_id,
+                    "username": user.username,
+                    "nickname": user.nickname,
+                    "profile_photo": (user.profile_photo if user.profile_photo else None),
                 },
-            }
+                "refresh_token": str(refresh_token),
+                "access_token": access_token_jwt,
+            },
+        }
 
-            # Return the response
-            return Response(response_data, status=status.HTTP_200_OK)
-
-        # If validation fails, return the errors
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        # Return the response
+        return Response(response_data, status=status.HTTP_200_OK)
 
 
 @method_decorator(jwt_required, name="dispatch")
@@ -450,9 +428,9 @@ class PreferenceAPIView(APIView):
         # Save each preference for the user
         for preference_id in preference_ids:
             try:
-                preference = Preference.objects.get(preference_id=preference_id)
+                preference = TourKeyword.objects.get(keyword_id=preference_id)
                 User_Preference.objects.create(user=user, preference=preference)
-            except Preference.DoesNotExist:
+            except TourKeyword.DoesNotExist:
                 return Response({"error": f"Preference ID {preference_id} not found"}, status=status.HTTP_404_NOT_FOUND)
 
         response_data = {
@@ -463,6 +441,75 @@ class PreferenceAPIView(APIView):
 
         # Return the response
         return Response(response_data, status=status.HTTP_200_OK)
+
+
+class OauthUserCheckAPIView(APIView):
+    def post(self, request, *args, **kwargs):
+        # Initialize the serializer with incoming request data
+
+        serializer = KaKaoLoginSerializer(data=request.data)
+        # Validate the data (Deserialization)
+        if serializer.is_valid():
+            # Access the validated data
+            code = serializer.validated_data["code"]
+            if not code:
+                return JsonResponse({"error": "Code is required"}, status=400)
+
+            # Exchange the code for tokens
+            data = {
+                "grant_type": "authorization_code",
+                "client_id": env("KAKAO_CLIENT_ID"),
+                "redirect_uri": env("KAKAO_REDIRECT_URI_FRONT"),
+                "code": code,
+            }
+            header = {"Content-Type": "application/x-www-form-urlencoded"}
+            token_uri = "https://kauth.kakao.com/oauth/token"
+            response_token = call("POST", token_uri, data, header)
+            # Handle error response from token request
+            if "error" in response_token:
+                return Response(response_token, status=status.HTTP_400_BAD_REQUEST)
+            kakao_access_token = response_token["access_token"]
+            response_token["refresh_token"]
+            response_token.get("id_token")
+
+            # Fetch user info from Kakao
+            response_oicd = call("GET", "https://kapi.kakao.com/v1/oidc/userinfo", {}, {"Authorization": f"Bearer {kakao_access_token}"})
+
+            try:
+                nickname = response_oicd["nickname"]
+            except BaseException:
+                nickname = response_oicd["sub"]
+
+            try:
+                response_oicd["picture"]
+            except BaseException:
+                pass
+
+            # Authenticate user
+            user = authenticate(request, username=nickname, password="dummy")
+
+            response_data = {
+                "statusCode": 200,
+                "message": "OK",
+                "content": {
+                    "user": (
+                        {
+                            "user_id": user.user_id,
+                            "username": user.username,
+                            "nickname": user.nickname,
+                            "profile_photo": (user.profile_photo if user.profile_photo else None),
+                        }
+                        if user
+                        else None
+                    ),
+                    "response_token": response_token,
+                },
+            }
+            # Return the response
+            return Response(response_data, status=status.HTTP_200_OK)
+
+        # If validation fails, return the errors
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
 def profile(request):
