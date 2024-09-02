@@ -155,12 +155,13 @@ class Notification(models.Model):
         db_table = "Notification"
 
 
-# tourLog 모델
+# TourLog 모델
 class TourLog(models.Model):
     log_id = models.AutoField(primary_key=True)
     search_date = models.DateTimeField(auto_now_add=True)
     search_text = models.CharField(max_length=100)
     user = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.CASCADE, related_name="usertourlog")
+    tour = models.ForeignKey(TourPlace, null=True, blank=True, on_delete=models.CASCADE, related_name="tourlog")  # tour_id 필드 추가
 
     class Meta:
         db_table = "TourLog"
