@@ -47,7 +47,7 @@ def postlist(request, id):
     # 각 게시물에 대해 좋아요 여부를 추가
     for x in d:
         if x["post_img"] is not None:
-            x["post_img"] = x["post_img"][1:-1].replace('"', "").replace("'", "").split(", ")
+            x["post_img"] = json.loads(x["post_img"])
         if x["post_id"] in plike:  # 게시물 ID가 plike 리스트에 있는지 확인
             x["like"] = "yes"
         else:
@@ -174,7 +174,15 @@ def userpre(request, id):
 
     # Return the serialized data as a JSON response
     # return JsonResponse(serializer.data, safe=False)
-    response_data = {"statusCode": "OK", "message": "OK", "content": serializer.data}
+
+    # 직렬화된 데이터를 리스트로 가져오기
+    d = serializer.data
+
+    # 각 게시물에 대해 좋아요 여부를 추가
+    for x in d:
+        if x["post_img"] is not None:
+            x["post_img"] = json.loads(x["post_img"])
+    response_data = {"statusCode": "OK", "message": "OK", "content": d}
 
     return JsonResponse(response_data, status=status.HTTP_200_OK, safe=False)
 
@@ -187,7 +195,14 @@ def best(request):
 
     # Return the serialized data as a JSON response
     # return JsonResponse(serializer.data, safe=False)
-    response_data = {"statusCode": "OK", "message": "OK", "content": serializer.data}
+    # 직렬화된 데이터를 리스트로 가져오기
+    d = serializer.data
+
+    # 각 게시물에 대해 좋아요 여부를 추가
+    for x in d:
+        if x["post_img"] is not None:
+            x["post_img"] = json.loads(x["post_img"])
+    response_data = {"statusCode": "OK", "message": "OK", "content": d}
 
     return JsonResponse(response_data, status=status.HTTP_200_OK, safe=False)
 
@@ -236,7 +251,7 @@ def write(request):
                 img_paths.append(settings.MEDIA_URL.replace("media/", "") + full_path)
                 # Save the post again with the image path
             # print(img_paths)
-            post.post_img = img_paths
+            post.post_img = json.dumps(img_paths)
             post.save()
 
         PostSerializer(post)
@@ -280,7 +295,15 @@ def modify(request):
             # 직렬화된 데이터를 JSON 응답으로 반환합니다.
             #
             # return JsonResponse(serializer.data, safe=False, status=200)
-            response_data = {"statusCode": "OK", "message": "OK", "content": serializer.data}
+
+            # 직렬화된 데이터를 리스트로 가져오기
+            d = serializer.data
+
+            # 각 게시물에 대해 좋아요 여부를 추가
+            for x in d:
+                if x["post_img"] is not None:
+                    x["post_img"] = json.loads(x["post_img"])
+            response_data = {"statusCode": "OK", "message": "OK", "content": d}
 
             return JsonResponse(response_data, status=status.HTTP_200_OK, safe=False)
 
@@ -356,8 +379,14 @@ def search_post(request, sorttype, text):
     serializer = PostSerializer(post_queryset, many=True)
 
     # return JsonResponse(serializer.data, safe=False, status=status.HTTP_200_OK)
+    # 직렬화된 데이터를 리스트로 가져오기
+    d = serializer.data
 
-    response_data = {"statusCode": "OK", "message": "OK", "content": serializer.data}
+    # 각 게시물에 대해 좋아요 여부를 추가
+    for x in d:
+        if x["post_img"] is not None:
+            x["post_img"] = json.loads(x["post_img"])
+    response_data = {"statusCode": "OK", "message": "OK", "content": d}
 
     return JsonResponse(response_data, status=status.HTTP_200_OK, safe=False)
 
@@ -375,7 +404,15 @@ def mypost(request, id):
 
         #
         # return JsonResponse(serializer.data, safe=False, status=status.HTTP_200_OK)
-        response_data = {"statusCode": "OK", "message": "OK", "content": serializer.data}
+
+        # 직렬화된 데이터를 리스트로 가져오기
+        d = serializer.data
+
+        # 각 게시물에 대해 좋아요 여부를 추가
+        for x in d:
+            if x["post_img"] is not None:
+                x["post_img"] = json.loads(x["post_img"])
+        response_data = {"statusCode": "OK", "message": "OK", "content": d}
 
         return JsonResponse(response_data, status=status.HTTP_200_OK, safe=False)
 
@@ -389,7 +426,15 @@ def comment(request, id):
     comment = Comments.objects.filter(post_id=id)
     serializer = CommentSerializer(comment, many=True)
     # return JsonResponse(serializer.data,  safe=False,status=status.HTTP_200_OK)
-    response_data = {"statusCode": "OK", "message": "OK", "content": serializer.data}
+
+    # 직렬화된 데이터를 리스트로 가져오기
+    d = serializer.data
+
+    # 각 게시물에 대해 좋아요 여부를 추가
+    for x in d:
+        if x["post_img"] is not None:
+            x["post_img"] = json.loads(x["post_img"])
+    response_data = {"statusCode": "OK", "message": "OK", "content": d}
 
     return JsonResponse(response_data, status=status.HTTP_200_OK, safe=False)
 
@@ -424,7 +469,15 @@ def comment_write(request):
             serializer = CommentSerializer(com)
             # return JsonResponse(serializer.data, status=status.HTTP_200_OK)
 
-            response_data = {"statusCode": "OK", "message": "OK", "content": serializer.data}
+            # 직렬화된 데이터를 리스트로 가져오기
+            d = serializer.data
+
+            # 각 게시물에 대해 좋아요 여부를 추가
+            for x in d:
+                if x["post_img"] is not None:
+                    x["post_img"] = json.loads(x["post_img"])
+
+            response_data = {"statusCode": "OK", "message": "OK", "content": d}
             addcommcnt(post_id)
             return JsonResponse(response_data, status=status.HTTP_200_OK, safe=False)
 
@@ -464,7 +517,14 @@ def mypostlog(request, id):
     postlog_list = PostLog.objects.filter(user_id=id)
     serializer = PostLogSerializer(postlog_list, many=True)
 
-    response_data = {"statusCode": "OK", "message": "OK", "content": serializer.data}
+    # 직렬화된 데이터를 리스트로 가져오기
+    d = serializer.data
+
+    # 각 게시물에 대해 좋아요 여부를 추가
+    for x in d:
+        if x["post_img"] is not None:
+            x["post_img"] = json.loads(x["post_img"])
+    response_data = {"statusCode": "OK", "message": "OK", "content": d}
 
     return JsonResponse(response_data, status=status.HTTP_200_OK, safe=False)
 
