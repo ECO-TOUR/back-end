@@ -198,7 +198,7 @@ def best(request):
 def write(request):
     if request.method == "POST":
         text = request.data.get("text")
-        img_file = request.FILES.get("img")
+        img_files = request.FILES.getlist("img")
         # date = parse_datetime(request.data.get("date"))
         date = request.data.get("date")
         likes = 0
@@ -221,15 +221,19 @@ def write(request):
             user_id=user_id,
         )
 
+        img_paths = []
         # Handle the image file upload and store its path
-        if img_file:
-            # Define the path where you want to save the image
-            path = f"uploads/{post.post_id}/{img_file.name}"
-            # Save the image file to the storage system (e.g., S3)
-            full_path = default_storage.save(path, img_file)
-            # Store the file path in the post_img field
-            post.post_img = settings.MEDIA_URL.replace("media/", "") + full_path
-            # Save the post again with the image path
+        if img_files:
+            for i, img_file in enumerate(img_files):
+                # Define the path where you want to save the image
+                path = f"uploads/{post.post_id}/{img_file.name}"
+                # Save the image file to the storage system (e.g., S3)
+                full_path = default_storage.save(path, img_file)
+                # Store the file path in the post_img field
+                img_paths.append(settings.MEDIA_URL.replace("media/", "") + full_path)
+                # Save the post again with the image path
+            # print(img_paths)
+            post.post_img = img_paths
             post.save()
 
         PostSerializer(post)
