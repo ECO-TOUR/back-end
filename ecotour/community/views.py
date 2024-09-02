@@ -46,8 +46,9 @@ def postlist(request, id):
 
     # 각 게시물에 대해 좋아요 여부를 추가
     for x in d:
-        if x["post_img"] is not None:
+        if x["post_img"]:
             x["post_img"] = json.loads(x["post_img"])
+
         if x["post_id"] in plike:  # 게시물 ID가 plike 리스트에 있는지 확인
             x["like"] = "yes"
         else:
@@ -180,7 +181,7 @@ def userpre(request, id):
 
     # 각 게시물에 대해 좋아요 여부를 추가
     for x in d:
-        if x["post_img"] is not None:
+        if x["post_img"]:
             x["post_img"] = json.loads(x["post_img"])
     response_data = {"statusCode": "OK", "message": "OK", "content": d}
 
@@ -200,7 +201,7 @@ def best(request):
 
     # 각 게시물에 대해 좋아요 여부를 추가
     for x in d:
-        if x["post_img"] is not None:
+        if x["post_img"]:
             x["post_img"] = json.loads(x["post_img"])
     response_data = {"statusCode": "OK", "message": "OK", "content": d}
 
@@ -301,7 +302,7 @@ def modify(request):
 
             # 각 게시물에 대해 좋아요 여부를 추가
             for x in d:
-                if x["post_img"] is not None:
+                if x["post_img"]:
                     x["post_img"] = json.loads(x["post_img"])
             response_data = {"statusCode": "OK", "message": "OK", "content": d}
 
@@ -384,7 +385,7 @@ def search_post(request, sorttype, text):
 
     # 각 게시물에 대해 좋아요 여부를 추가
     for x in d:
-        if x["post_img"] is not None:
+        if x["post_img"]:
             x["post_img"] = json.loads(x["post_img"])
     response_data = {"statusCode": "OK", "message": "OK", "content": d}
 
@@ -410,7 +411,7 @@ def mypost(request, id):
 
         # 각 게시물에 대해 좋아요 여부를 추가
         for x in d:
-            if x["post_img"] is not None:
+            if x["post_img"]:
                 x["post_img"] = json.loads(x["post_img"])
         response_data = {"statusCode": "OK", "message": "OK", "content": d}
 
@@ -432,7 +433,7 @@ def comment(request, id):
 
     # 각 게시물에 대해 좋아요 여부를 추가
     for x in d:
-        if x["post_img"] is not None:
+        if x["post_img"]:
             x["post_img"] = json.loads(x["post_img"])
     response_data = {"statusCode": "OK", "message": "OK", "content": d}
 
@@ -474,7 +475,7 @@ def comment_write(request):
 
             # 각 게시물에 대해 좋아요 여부를 추가
             for x in d:
-                if x["post_img"] is not None:
+                if x["post_img"]:
                     x["post_img"] = json.loads(x["post_img"])
 
             response_data = {"statusCode": "OK", "message": "OK", "content": d}
@@ -522,7 +523,7 @@ def mypostlog(request, id):
 
     # 각 게시물에 대해 좋아요 여부를 추가
     for x in d:
-        if x["post_img"] is not None:
+        if x["post_img"]:
             x["post_img"] = json.loads(x["post_img"])
     response_data = {"statusCode": "OK", "message": "OK", "content": d}
 
