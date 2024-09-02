@@ -5,6 +5,7 @@ from django.http import JsonResponse
 from django.shortcuts import get_object_or_404
 from django.views.decorators.csrf import csrf_exempt
 from rest_framework import status
+import logging
 
 
 # 관광지 검색
@@ -109,32 +110,49 @@ def tour_place_detail(request, tour_id):
 
 
 # 사용자별 검색 기록 조회
-# @login_required
+logger = logging.getLogger(__name__)
+
 @csrf_exempt
 def get_search_history(request, user_id):
     if request.method == "GET":
         try:
-            # 특정 사용자의 검색 기록을 최신순으로 가져옴
             search_history = TourLog.objects.filter(user_id=user_id).order_by("-search_date")
 
-            # 검색 기록을 파싱하여 JSON 응답을 준비
             history = [
-                {"search_text": log.search_text, "search_date": log.search_date.isoformat()}  # ISO 포맷으로 날짜를 문자열로 변환
+                {
+                    "log_id": log.log_id,
+                    "tour_id": log.tour_id,  # 투어 ID 참조 수정
+                    "search_text": log.search_text,
+                    "search_date": log.search_date.isoformat()
+                }
                 for log in search_history
             ]
 
             return JsonResponse({"statusCode": 200, "search_history": history}, status=200)
 
         except Exception as e:
-            # 오류 발생 시 로그에 기록하고 JSON 응답을 반환
             logger.error(f"Error fetching search history for user {user_id}: {str(e)}")
             return JsonResponse({"statusCode": 500, "message": "서버 오류입니다.", "error": str(e)}, status=500)
 
     return JsonResponse({"statusCode": 400, "message": "잘못된 요청입니다.", "error": "요청 메소드는 GET이어야 합니다."}, status=400)
 
+# 검색 기록 전체 삭제
+@csrf_exempt
+def delete_all_search_history(request, user_id):
+    if request.method == "DELETE":
+        try:
+            # 해당 사용자의 모든 검색 기록 삭제
+            TourLog.objects.filter(user_id=user_id).delete()
+            return JsonResponse({"statusCode": 200, "message": "모든 검색 기록이 삭제되었습니다."}, status=200)
+
+        except Exception as e:
+            logger.error(f"Error deleting search history for user {user_id}: {str(e)}")
+            return JsonResponse({"statusCode": 500, "message": "서버 오류입니다.", "error": str(e)}, status=500)
+
+    return JsonResponse({"statusCode": 400, "message": "잘못된 요청입니다.", "error": "요청 메소드는 DELETE여야 합니다."}, status=400)
+
 
 # 검색 기록 삭제
-# @login_required
 @csrf_exempt
 def delete_search_history(request, user_id, log_id):
     if request.method == "DELETE":
@@ -152,7 +170,14 @@ def get_top_search_terms(request):
     if request.method == "GET":
         # 상위 10개의 관광지 검색어 순위 조회 (search_count 기준으로)
         top_places = TourPlace.objects.order_by("-search_count")[:10]
-        top_searches = [{"tour_name": place.tour_name, "search_count": place.search_count} for place in top_places]
+        top_searches = [
+            {
+                "tour_id": place.tour_id,  # 투어 ID 추가
+                "tour_name": place.tour_name, 
+                "search_count": place.search_count
+            } 
+            for place in top_places
+        ]
 
         return JsonResponse({"statusCode": 200, "top_search_terms": top_searches})
 
