@@ -9,9 +9,9 @@ class CustomUser(AbstractUser):
     user_id = models.AutoField(primary_key=True)
     profile_photo = models.CharField(max_length=255, blank=True, null=True)
     nickname = models.CharField(max_length=255, unique=True)
-    oauth_kakao_access_token = models.CharField(max_length=255, blank=True, null=True)
-    oauth_kakao_refresh_token = models.CharField(max_length=255, blank=True, null=True)
-    oauth_kakao_id_token = models.CharField(max_length=255, blank=True, null=True)
+    oauth_kakao_access_token = models.CharField(max_length=512, blank=True, null=True)
+    oauth_kakao_refresh_token = models.CharField(max_length=512, blank=True, null=True)
+    oauth_kakao_id_token = models.CharField(max_length=1024, blank=True, null=True)
     oauth_kakao_expires_at = models.DateTimeField(blank=True, null=True)  # Token expiration time
 
     def __str__(self):
