@@ -47,8 +47,9 @@ def postlist(request, id):
 
     # 각 게시물에 대해 좋아요 여부를 추가
     for x in d:
-        if x["post_img"] is not None:
+        if x["post_img"]:
             x["post_img"] = json.loads(x["post_img"])
+
         if x["post_id"] in plike:  # 게시물 ID가 plike 리스트에 있는지 확인
             x["like"] = "yes"
         else:
@@ -181,7 +182,7 @@ def userpre(request, id):
 
     # 각 게시물에 대해 좋아요 여부를 추가
     for x in d:
-        if x["post_img"] is not None:
+        if x["post_img"]:
             x["post_img"] = json.loads(x["post_img"])
     response_data = {"statusCode": "OK", "message": "OK", "content": d}
 
@@ -201,7 +202,7 @@ def best(request):
 
     # 각 게시물에 대해 좋아요 여부를 추가
     for x in d:
-        if x["post_img"] is not None:
+        if x["post_img"]:
             x["post_img"] = json.loads(x["post_img"])
     response_data = {"statusCode": "OK", "message": "OK", "content": d}
 
@@ -342,7 +343,7 @@ def modify(request):
             update_or_create_rating2(user_id, origin_tour_id, tour_id)
             # 각 게시물에 대해 좋아요 여부를 추가
             for x in d:
-                if x["post_img"] is not None:
+                if x["post_img"]:
                     x["post_img"] = json.loads(x["post_img"])
             response_data = {"statusCode": "OK", "message": "OK", "content": d}
 
@@ -445,7 +446,7 @@ def search_post(request, sorttype, text):
 
     # 각 게시물에 대해 좋아요 여부를 추가
     for x in d:
-        if x["post_img"] is not None:
+        if x["post_img"]:
             x["post_img"] = json.loads(x["post_img"])
     response_data = {"statusCode": "OK", "message": "OK", "content": d}
 
@@ -471,7 +472,7 @@ def mypost(request, id):
 
         # 각 게시물에 대해 좋아요 여부를 추가
         for x in d:
-            if x["post_img"] is not None:
+            if x["post_img"]:
                 x["post_img"] = json.loads(x["post_img"])
         response_data = {"statusCode": "OK", "message": "OK", "content": d}
 
@@ -493,7 +494,7 @@ def comment(request, id):
 
     # 각 게시물에 대해 좋아요 여부를 추가
     for x in d:
-        if x["post_img"] is not None:
+        if x["post_img"]:
             x["post_img"] = json.loads(x["post_img"])
     response_data = {"statusCode": "OK", "message": "OK", "content": d}
 
@@ -535,7 +536,7 @@ def comment_write(request):
 
             # 각 게시물에 대해 좋아요 여부를 추가
             for x in d:
-                if x["post_img"] is not None:
+                if x["post_img"]:
                     x["post_img"] = json.loads(x["post_img"])
 
             response_data = {"statusCode": "OK", "message": "OK", "content": d}
@@ -583,7 +584,7 @@ def mypostlog(request, id):
 
     # 각 게시물에 대해 좋아요 여부를 추가
     for x in d:
-        if x["post_img"] is not None:
+        if x["post_img"]:
             x["post_img"] = json.loads(x["post_img"])
     response_data = {"statusCode": "OK", "message": "OK", "content": d}
 
@@ -591,6 +592,9 @@ def mypostlog(request, id):
 
 
 # 게시글 좋아요
+
+
+
 @csrf_exempt
 def toggle_post_like(request, user_id):
     if request.method == "POST":
@@ -599,12 +603,25 @@ def toggle_post_like(request, user_id):
         post = get_object_or_404(Post, post_id=post_id)
         user = get_object_or_404(User, user_id=user_id)
 
+        # 좋아요 추가/삭제 로직
         like, created = PostLikes.objects.get_or_create(user=user, post=post)
+        
+        # 관련 키워드 가져오기
+        tour_place = post.tour
+        tour_keywords = TourPlace_TourKeyword.objects.filter(tour=tour_place)
+
         if not created:
             # 이미 좋아요를 누른 경우, 좋아요 취소 및 post_likes 감소
             like.delete()
             post.post_likes = F("post_likes") - 1
             post.save(update_fields=["post_likes"])
+
+            # 모든 관련 keyword_id에 대해 rating -1
+            for tour_keyword in tour_keywords:
+                keyword_rating, _ = KeywordRating.objects.get_or_create(user=user, keyword=tour_keyword.keyword)
+                keyword_rating.rating = max(keyword_rating.rating - 1, 0)  # rating이 1보다 작아지지 않도록 설정
+                keyword_rating.save()
+
             post.refresh_from_db()  # 데이터베이스에서 최신 값을 다시 가져옴
             return JsonResponse(
                 {
@@ -619,8 +636,16 @@ def toggle_post_like(request, user_id):
         # 좋아요 추가 및 post_likes 증가
         post.post_likes = F("post_likes") + 1
         post.save(update_fields=["post_likes"])
+
+        # 모든 관련 keyword_id에 대해 rating +1
+        for tour_keyword in tour_keywords:
+            keyword_rating, _ = KeywordRating.objects.get_or_create(user=user, keyword=tour_keyword.keyword)
+            keyword_rating.rating += 1
+            keyword_rating.save()
+
         post.refresh_from_db()  # 데이터베이스에서 최신 값을 다시 가져옴
         return JsonResponse(
             {"statusCode": 200, "message": "게시글에 좋아요가 추가되었습니다.", "status": "liked", "post_id": post_id, "post_likes": post.post_likes}
         )
+
     return JsonResponse({"statusCode": 400, "message": "잘못된 요청입니다.", "error": "요청 메소드는 POST여야 합니다."}, status=400)
