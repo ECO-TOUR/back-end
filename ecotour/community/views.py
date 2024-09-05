@@ -490,7 +490,7 @@ def toggle_post_like(request, user_id):
             # 모든 관련 keyword_id에 대해 rating -1
             for tour_keyword in tour_keywords:
                 keyword_rating, _ = KeywordRating.objects.get_or_create(user=user, keyword=tour_keyword.keyword)
-                keyword_rating.rating = max(keyword_rating.rating - 1, 1)  # rating이 1보다 작아지지 않도록 설정
+                keyword_rating.rating = max(keyword_rating.rating - 1, 0)  # rating이 1보다 작아지지 않도록 설정
                 keyword_rating.save()
 
             post.refresh_from_db()  # 데이터베이스에서 최신 값을 다시 가져옴
