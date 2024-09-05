@@ -1,6 +1,5 @@
 import json
-
-from community.models import Likes, TourPlace
+from community.models import Likes, TourPlace, TourKeyword, KeywordRating, TourPlace_TourKeyword
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ObjectDoesNotExist
 from django.db.models import Avg
@@ -10,19 +9,35 @@ from django.views.decorators.csrf import csrf_exempt
 
 User = get_user_model()
 
-
-# @login_required
 @csrf_exempt
 def toggle_like(request, user_id):
     if request.method == "POST":
         data = json.loads(request.body)
         tour_id = data.get("tour_id")
+
+        # 관광지 및 사용자 조회
         tour_place = get_object_or_404(TourPlace, tour_id=tour_id)
         user = get_object_or_404(User, user_id=user_id)
+
+        # TourPlace_has_TourKeyword 테이블에서 keyword_id 찾기
+        tour_keywords = TourPlace_TourKeyword.objects.filter(tour=tour_place)
+        
+        if not tour_keywords.exists():
+            return JsonResponse({"statusCode": 404, "message": "관광지와 관련된 키워드를 찾을 수 없습니다."}, status=404)
+
+        # 좋아요 처리
         like, created = Likes.objects.get_or_create(user=user, tour=tour_place)
+
         if not created:
             # 이미 좋아요를 누른 경우, 좋아요 취소
             like.delete()
+
+            # 모든 관련 keyword_id에 대해 rating -1
+            for tour_keyword in tour_keywords:
+                keyword_rating, _ = KeywordRating.objects.get_or_create(user=user, keyword=tour_keyword.keyword)
+                keyword_rating.rating = max(keyword_rating.rating - 1, 0)  # rating이 0보다 작아지지 않도록 설정
+                keyword_rating.save()
+
             return JsonResponse(
                 {
                     "statusCode": 200,
@@ -34,6 +49,11 @@ def toggle_like(request, user_id):
             )
 
         # 좋아요 추가
+        for tour_keyword in tour_keywords:
+            keyword_rating, _ = KeywordRating.objects.get_or_create(user=user, keyword=tour_keyword.keyword)
+            keyword_rating.rating += 1
+            keyword_rating.save()
+
         return JsonResponse(
             {
                 "statusCode": 200,
@@ -44,6 +64,9 @@ def toggle_like(request, user_id):
             }
         )
     return JsonResponse({"statusCode": 400, "message": "잘못된 요청입니다.", "error": "요청 메소드는 POST여야 합니다."}, status=400)
+
+
+
 
 
 @csrf_exempt

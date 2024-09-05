@@ -531,6 +531,9 @@ def mypostlog(request, id):
 
 
 # 게시글 좋아요
+
+
+
 @csrf_exempt
 def toggle_post_like(request, user_id):
     if request.method == "POST":
@@ -539,12 +542,25 @@ def toggle_post_like(request, user_id):
         post = get_object_or_404(Post, post_id=post_id)
         user = get_object_or_404(User, user_id=user_id)
 
+        # 좋아요 추가/삭제 로직
         like, created = PostLikes.objects.get_or_create(user=user, post=post)
+        
+        # 관련 키워드 가져오기
+        tour_place = post.tour
+        tour_keywords = TourPlace_TourKeyword.objects.filter(tour=tour_place)
+
         if not created:
             # 이미 좋아요를 누른 경우, 좋아요 취소 및 post_likes 감소
             like.delete()
             post.post_likes = F("post_likes") - 1
             post.save(update_fields=["post_likes"])
+
+            # 모든 관련 keyword_id에 대해 rating -1
+            for tour_keyword in tour_keywords:
+                keyword_rating, _ = KeywordRating.objects.get_or_create(user=user, keyword=tour_keyword.keyword)
+                keyword_rating.rating = max(keyword_rating.rating - 1, 1)  # rating이 1보다 작아지지 않도록 설정
+                keyword_rating.save()
+
             post.refresh_from_db()  # 데이터베이스에서 최신 값을 다시 가져옴
             return JsonResponse(
                 {
@@ -559,8 +575,16 @@ def toggle_post_like(request, user_id):
         # 좋아요 추가 및 post_likes 증가
         post.post_likes = F("post_likes") + 1
         post.save(update_fields=["post_likes"])
+
+        # 모든 관련 keyword_id에 대해 rating +1
+        for tour_keyword in tour_keywords:
+            keyword_rating, _ = KeywordRating.objects.get_or_create(user=user, keyword=tour_keyword.keyword)
+            keyword_rating.rating += 1
+            keyword_rating.save()
+
         post.refresh_from_db()  # 데이터베이스에서 최신 값을 다시 가져옴
         return JsonResponse(
             {"statusCode": 200, "message": "게시글에 좋아요가 추가되었습니다.", "status": "liked", "post_id": post_id, "post_likes": post.post_likes}
         )
+
     return JsonResponse({"statusCode": 400, "message": "잘못된 요청입니다.", "error": "요청 메소드는 POST여야 합니다."}, status=400)
