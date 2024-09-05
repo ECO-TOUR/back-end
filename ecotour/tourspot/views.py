@@ -19,12 +19,16 @@ def search_tour_places(request):
         # 관광지 검색어와 일치하는 관광지 찾기
         matching_places = TourPlace.objects.filter(tour_name__icontains=search_term)
 
-        # 검색어를 TourLog에 저장
-        if request.user.is_authenticated:
-            TourLog.objects.create(user=request.user, search_text=search_term)
-
         # 관광지의 search_count 증가
         TourPlace.objects.filter(tour_name__icontains=search_term).update(search_count=F("search_count") + 1)
+
+        # 검색어를 TourLog에 저장
+        if request.user.is_authenticated:
+            # 검색어와 일치하는 관광지의 tour_id 찾기
+            matching_place_ids = matching_places.values_list('tour_id', flat=True)
+            tour_id = matching_place_ids[0] if matching_place_ids else None
+
+            TourLog.objects.create(user=request.user, search_text=search_term, tour_id=tour_id)
 
         # 관광지 검색 결과 파싱 및 반환
         search_results = []
