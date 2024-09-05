@@ -2,6 +2,7 @@ import json
 
 from django.contrib.auth import get_user_model
 from django.core.files.storage import default_storage
+from django.db import IntegrityError
 
 # 새로 추가
 from django.db.models import F
@@ -208,6 +209,23 @@ def best(request):
 
 
 # 커뮤니티 글 작성
+def update_or_create_rating(user_id, tour_id):
+    try:
+        keyword_ids = TourPlace_TourKeyword.objects.filter(tour_id=tour_id).values_list("keyword_id", flat=True)
+
+        for keyword_id in keyword_ids:
+            # Step 1: 특정 user_id와 keyword_id의 존재 여부 확인
+            obj, created = MODEL.objects.get_or_create(
+                user_id=user_id, keyword_id=keyword_id, defaults={"rating": 1}  # 존재하지 않으면 rating을 1로 초기화
+            )
+
+            # Step 2: 존재할 경우, rating 값을 +1
+            if not created:
+                obj.rating += 1
+                obj.save()
+
+    except IntegrityError as e:
+        print(f"Error occurred: {e}")
 
 
 # from django.utils.dateparse import parse_datetime
@@ -255,6 +273,7 @@ def write(request):
             post.save()
 
         PostSerializer(post)
+        update_or_create_rating(user_id, tour_id)
         # return JsonResponse("ok", safe=False, status=status.HTTP_200_OK)
         response_data = {"statusCode": "OK", "message": "OK", "content": "OK"}
 
@@ -262,6 +281,26 @@ def write(request):
 
     else:
         return JsonResponse({"error": "Only POST requests are allowed."}, status=status.HTTP_400_BAD_REQUEST)
+
+
+def update_or_create_rating2(user_id, origin_tour_id, tour_id):
+    try:
+        keyword_ids = TourPlace_TourKeyword.objects.filter(tour_id=origin_tour_id).values_list("keyword_id", flat=True)
+
+        for keyword_id in keyword_ids:
+            # Step 1: 특정 user_id와 keyword_id의 존재 여부 확인
+            obj, created = MODEL.objects.get_or_create(
+                user_id=user_id, keyword_id=keyword_id, defaults={"rating": 0}  # 존재하지 않으면 rating을 1로 초기화
+            )
+
+            # Step 2: 존재할 경우, rating 값을 -1
+            if not created:
+                obj.rating = max(0, obj.rating - 1)
+                obj.save()
+
+        update_or_create_rating(user_id, tour_id)
+    except IntegrityError as e:
+        print(f"Error occurred: {e}")
 
 
 @csrf_exempt
@@ -274,7 +313,7 @@ def modify(request):
 
             # post_id로 Post 객체를 가져오거나 404 오류를 반환합니다.
             post = get_object_or_404(Post, post_id=post_id)
-
+            origin_tour_id = post.tour_id
             # 데이터를 업데이트합니다.
             post.post_text = data.get("text", post.post_text)
             post.post_img = data.get("img", post.post_img)
@@ -283,6 +322,8 @@ def modify(request):
             post.post_score = data.get("score", post.post_score)
             post.post_hashtag = data.get("hashtag", post.post_hashtag)
             post.last_modified = timezone.now()
+            user_id = data.get("user_id")
+            tour_id = data.get("tour_id")
             post.tour_id = data.get("tour_id", post.tour_id)
             post.user_id = data.get("user_id", post.user_id)
 
@@ -298,7 +339,7 @@ def modify(request):
 
             # 직렬화된 데이터를 리스트로 가져오기
             d = serializer.data
-
+            update_or_create_rating2(user_id, origin_tour_id, tour_id)
             # 각 게시물에 대해 좋아요 여부를 추가
             for x in d:
                 if x["post_img"] is not None:
@@ -317,19 +358,39 @@ def modify(request):
         return JsonResponse({"error": "modify: Only POST requests are allowed."}, status=404)
 
 
+def update_or_create_rating3(user_id, tour_id):
+    try:
+        keyword_ids = TourPlace_TourKeyword.objects.filter(tour_id=tour_id).values_list("keyword_id", flat=True)
+
+        for keyword_id in keyword_ids:
+            # Step 1: 특정 user_id와 keyword_id의 존재 여부 확인
+            obj, created = MODEL.objects.get_or_create(
+                user_id=user_id, keyword_id=keyword_id, defaults={"rating": 0}  # 존재하지 않으면 rating을 1로 초기화
+            )
+
+            # Step 2: 존재할 경우, rating 값을 +1
+            if not created:
+                obj.rating = max(0, obj.rating - 1)
+                obj.save()
+
+    except IntegrityError as e:
+        print(f"Error occurred: {e}")
+
+
 @csrf_exempt
 def delete(request, id):
     if request.method == "DELETE":
         try:
             # 특정 포스트 객체를 가져옵니다. 없으면 404를 반환합니다.
             post = get_object_or_404(Post, post_id=id)  # 필드 이름이 'id'인지 'post_id'인지 확인하세요.
-
+            user_id = post.user_id
+            tour_id = post.tour_id
             # 객체를 삭제합니다.
             post.delete()
 
             # return JsonResponse("ok", safe=False, status=status.HTTP_200_OK)
             response_data = {"statusCode": "OK", "message": "OK", "content": "OK"}
-
+            update_or_create_rating3(user_id, tour_id)
             return JsonResponse(response_data, status=status.HTTP_200_OK, safe=False)
 
         except Exception as e:
