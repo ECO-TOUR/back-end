@@ -2,6 +2,7 @@ import json
 
 from django.contrib.auth import get_user_model
 from django.core.files.storage import default_storage
+from django.db import IntegrityError
 
 # 새로 추가
 from django.db.models import F
@@ -46,12 +47,16 @@ def postlist(request, id):
 
     # 각 게시물에 대해 좋아요 여부를 추가
     for x in d:
+        if x["post_img"]:
+            x["post_img"] = json.loads(x["post_img"])
+
         if x["post_id"] in plike:  # 게시물 ID가 plike 리스트에 있는지 확인
             x["like"] = "yes"
         else:
             x["like"] = "no"
 
     # 응답 데이터 생성
+
     response_data = {"statusCode": "OK", "message": "OK", "content": d}
 
     return JsonResponse(response_data, safe=False)
@@ -171,7 +176,15 @@ def userpre(request, id):
 
     # Return the serialized data as a JSON response
     # return JsonResponse(serializer.data, safe=False)
-    response_data = {"statusCode": "OK", "message": "OK", "content": serializer.data}
+
+    # 직렬화된 데이터를 리스트로 가져오기
+    d = serializer.data
+
+    # 각 게시물에 대해 좋아요 여부를 추가
+    for x in d:
+        if x["post_img"]:
+            x["post_img"] = json.loads(x["post_img"])
+    response_data = {"statusCode": "OK", "message": "OK", "content": d}
 
     return JsonResponse(response_data, status=status.HTTP_200_OK, safe=False)
 
@@ -179,17 +192,41 @@ def userpre(request, id):
 # 점수 높은 순 top3
 def best(request):
     post_list = Post.objects.all().order_by("-post_likes")
-    post_list = post_list[:3]
+    post_list = post_list[:4]
     serializer = PostSerializer(post_list, many=True)
 
     # Return the serialized data as a JSON response
     # return JsonResponse(serializer.data, safe=False)
-    response_data = {"statusCode": "OK", "message": "OK", "content": serializer.data}
+    # 직렬화된 데이터를 리스트로 가져오기
+    d = serializer.data
+
+    # 각 게시물에 대해 좋아요 여부를 추가
+    for x in d:
+        if x["post_img"]:
+            x["post_img"] = json.loads(x["post_img"])
+    response_data = {"statusCode": "OK", "message": "OK", "content": d}
 
     return JsonResponse(response_data, status=status.HTTP_200_OK, safe=False)
 
 
 # 커뮤니티 글 작성
+def update_or_create_rating(user_id, tour_id):
+    try:
+        keyword_ids = TourPlace_TourKeyword.objects.filter(tour_id=tour_id).values_list("keyword_id", flat=True)
+
+        for keyword_id in keyword_ids:
+            # Step 1: 특정 user_id와 keyword_id의 존재 여부 확인
+            obj, created = KeywordRating.objects.get_or_create(
+                user_id=user_id, keyword_id=keyword_id, defaults={"rating": 1}  # 존재하지 않으면 rating을 1로 초기화
+            )
+
+            # Step 2: 존재할 경우, rating 값을 +1
+            if not created:
+                obj.rating += 1
+                obj.save()
+
+    except IntegrityError as e:
+        print(f"Error occurred: {e}")
 
 
 # from django.utils.dateparse import parse_datetime
@@ -198,7 +235,7 @@ def best(request):
 def write(request):
     if request.method == "POST":
         text = request.data.get("text")
-        img_file = request.FILES.get("img")
+        img_files = request.FILES.getlist("img")
         # date = parse_datetime(request.data.get("date"))
         date = request.data.get("date")
         likes = 0
@@ -221,18 +258,23 @@ def write(request):
             user_id=user_id,
         )
 
+        img_paths = []
         # Handle the image file upload and store its path
-        if img_file:
-            # Define the path where you want to save the image
-            path = f"uploads/{post.post_id}/{img_file.name}"
-            # Save the image file to the storage system (e.g., S3)
-            full_path = default_storage.save(path, img_file)
-            # Store the file path in the post_img field
-            post.post_img = settings.MEDIA_URL.replace("media/", "") + full_path
-            # Save the post again with the image path
+        if img_files:
+            for i, img_file in enumerate(img_files):
+                # Define the path where you want to save the image
+                path = f"uploads/{post.post_id}/{img_file.name}"
+                # Save the image file to the storage system (e.g., S3)
+                full_path = default_storage.save(path, img_file)
+                # Store the file path in the post_img field
+                img_paths.append(settings.MEDIA_URL.replace("media/", "") + full_path)
+                # Save the post again with the image path
+            # print(img_paths)
+            post.post_img = json.dumps(img_paths)
             post.save()
 
         PostSerializer(post)
+        update_or_create_rating(user_id, tour_id)
         # return JsonResponse("ok", safe=False, status=status.HTTP_200_OK)
         response_data = {"statusCode": "OK", "message": "OK", "content": "OK"}
 
@@ -242,27 +284,54 @@ def write(request):
         return JsonResponse({"error": "Only POST requests are allowed."}, status=status.HTTP_400_BAD_REQUEST)
 
 
+def update_or_create_rating2(user_id, origin_tour_id, tour_id):
+    try:
+        keyword_ids = TourPlace_TourKeyword.objects.filter(tour_id=origin_tour_id).values_list("keyword_id", flat=True)
+
+        for keyword_id in keyword_ids:
+            # Step 1: 특정 user_id와 keyword_id의 존재 여부 확인
+            obj, created = KeywordRating.objects.get_or_create(
+                user_id=user_id, keyword_id=keyword_id, defaults={"rating": 0}  # 존재하지 않으면 rating을 1로 초기화
+            )
+
+            # Step 2: 존재할 경우, rating 값을 -1
+            if not created:
+                obj.rating = max(0, obj.rating - 1)
+                obj.save()
+
+        update_or_create_rating(user_id, tour_id)
+    except IntegrityError as e:
+        print(f"Error occurred: {e}")
+
+
 @csrf_exempt
 def modify(request):
     if request.method == "POST":
         try:
             # JSON 데이터를 파싱합니다.
             data = json.loads(request.body)
+            if not data:
+                raise json.JSONDecodeError("Empty JSON body", "", 0)
+
             post_id = data.get("post_id")
+            if not post_id:
+                raise KeyError("post_id")
 
             # post_id로 Post 객체를 가져오거나 404 오류를 반환합니다.
             post = get_object_or_404(Post, post_id=post_id)
+            post.tour_id
 
             # 데이터를 업데이트합니다.
             post.post_text = data.get("text", post.post_text)
             post.post_img = data.get("img", post.post_img)
-            # post.post_date = data.get("date", post.post_date)
             post.post_likes = data.get("likes", post.post_likes)
             post.post_score = data.get("score", post.post_score)
             post.post_hashtag = data.get("hashtag", post.post_hashtag)
             post.last_modified = timezone.now()
-            post.tour_id = data.get("tour_id", post.tour_id)
-            post.user_id = data.get("user_id", post.user_id)
+            user_id = data.get("user_id")
+            tour_id = data.get("tour_id", post.tour_id)
+            post.tour_id = tour_id
+            post.user_id = user_id
 
             # 변경된 내용을 저장합니다.
             post.save()
@@ -270,21 +339,48 @@ def modify(request):
             # 객체를 직렬화합니다.
             serializer = PostSerializer(post)
 
-            # 직렬화된 데이터를 JSON 응답으로 반환합니다.
-            #
-            # return JsonResponse(serializer.data, safe=False, status=200)
-            response_data = {"statusCode": "OK", "message": "OK", "content": serializer.data}
+            # 직렬화된 데이터에서 이미지 URL 처리
+            d = serializer.data
+            if d.get("post_img"):
+                # 이미지 URL이 JSON 배열로 처리되어야 하는 경우
+                try:
+                    d["post_img"] = json.loads(d["post_img"])
+                except (TypeError, json.JSONDecodeError):
+                    # JSON 배열 형식이 아닌 경우, 원래 문자열로 반환
+                    pass
 
+            response_data = {"statusCode": "OK", "message": "OK", "content": d}
             return JsonResponse(response_data, status=status.HTTP_200_OK, safe=False)
 
-        except json.JSONDecodeError:
+        except json.JSONDecodeError as e:
+            print(f"JSON decode error: {e}")
             return JsonResponse({"error": "Invalid JSON format."}, status=400)
 
         except KeyError as e:
+            print(f"Missing key: {e}")
             return JsonResponse({"error": f"Missing key: {str(e)}"}, status=400)
 
     else:
-        return JsonResponse({"error": "modify: Only POST requests are allowed."}, status=404)
+        return JsonResponse({"error": "Only POST requests are allowed."}, status=404)
+
+
+def update_or_create_rating3(user_id, tour_id):
+    try:
+        keyword_ids = TourPlace_TourKeyword.objects.filter(tour_id=tour_id).values_list("keyword_id", flat=True)
+
+        for keyword_id in keyword_ids:
+            # Step 1: 특정 user_id와 keyword_id의 존재 여부 확인
+            obj, created = KeywordRating.objects.get_or_create(
+                user_id=user_id, keyword_id=keyword_id, defaults={"rating": 0}  # 존재하지 않으면 rating을 1로 초기화
+            )
+
+            # Step 2: 존재할 경우, rating 값을 +1
+            if not created:
+                obj.rating = max(0, obj.rating - 1)
+                obj.save()
+
+    except IntegrityError as e:
+        print(f"Error occurred: {e}")
 
 
 @csrf_exempt
@@ -293,13 +389,14 @@ def delete(request, id):
         try:
             # 특정 포스트 객체를 가져옵니다. 없으면 404를 반환합니다.
             post = get_object_or_404(Post, post_id=id)  # 필드 이름이 'id'인지 'post_id'인지 확인하세요.
-
+            user_id = post.user_id
+            tour_id = post.tour_id
             # 객체를 삭제합니다.
             post.delete()
 
             # return JsonResponse("ok", safe=False, status=status.HTTP_200_OK)
             response_data = {"statusCode": "OK", "message": "OK", "content": "OK"}
-
+            update_or_create_rating3(user_id, tour_id)
             return JsonResponse(response_data, status=status.HTTP_200_OK, safe=False)
 
         except Exception as e:
@@ -349,8 +446,14 @@ def search_post(request, sorttype, text):
     serializer = PostSerializer(post_queryset, many=True)
 
     # return JsonResponse(serializer.data, safe=False, status=status.HTTP_200_OK)
+    # 직렬화된 데이터를 리스트로 가져오기
+    d = serializer.data
 
-    response_data = {"statusCode": "OK", "message": "OK", "content": serializer.data}
+    # 각 게시물에 대해 좋아요 여부를 추가
+    for x in d:
+        if x["post_img"]:
+            x["post_img"] = json.loads(x["post_img"])
+    response_data = {"statusCode": "OK", "message": "OK", "content": d}
 
     return JsonResponse(response_data, status=status.HTTP_200_OK, safe=False)
 
@@ -368,7 +471,15 @@ def mypost(request, id):
 
         #
         # return JsonResponse(serializer.data, safe=False, status=status.HTTP_200_OK)
-        response_data = {"statusCode": "OK", "message": "OK", "content": serializer.data}
+
+        # 직렬화된 데이터를 리스트로 가져오기
+        d = serializer.data
+
+        # 각 게시물에 대해 좋아요 여부를 추가
+        for x in d:
+            if x["post_img"]:
+                x["post_img"] = json.loads(x["post_img"])
+        response_data = {"statusCode": "OK", "message": "OK", "content": d}
 
         return JsonResponse(response_data, status=status.HTTP_200_OK, safe=False)
 
@@ -382,7 +493,15 @@ def comment(request, id):
     comment = Comments.objects.filter(post_id=id)
     serializer = CommentSerializer(comment, many=True)
     # return JsonResponse(serializer.data,  safe=False,status=status.HTTP_200_OK)
-    response_data = {"statusCode": "OK", "message": "OK", "content": serializer.data}
+
+    # 직렬화된 데이터를 리스트로 가져오기
+    d = serializer.data
+
+    # 각 게시물에 대해 좋아요 여부를 추가
+    for x in d:
+        if x["post_img"]:
+            x["post_img"] = json.loads(x["post_img"])
+    response_data = {"statusCode": "OK", "message": "OK", "content": d}
 
     return JsonResponse(response_data, status=status.HTTP_200_OK, safe=False)
 
@@ -417,7 +536,15 @@ def comment_write(request):
             serializer = CommentSerializer(com)
             # return JsonResponse(serializer.data, status=status.HTTP_200_OK)
 
-            response_data = {"statusCode": "OK", "message": "OK", "content": serializer.data}
+            # 직렬화된 데이터를 리스트로 가져오기
+            d = serializer.data
+
+            # 각 게시물에 대해 좋아요 여부를 추가
+            for x in d:
+                if x["post_img"]:
+                    x["post_img"] = json.loads(x["post_img"])
+
+            response_data = {"statusCode": "OK", "message": "OK", "content": d}
             addcommcnt(post_id)
             return JsonResponse(response_data, status=status.HTTP_200_OK, safe=False)
 
@@ -457,13 +584,19 @@ def mypostlog(request, id):
     postlog_list = PostLog.objects.filter(user_id=id)
     serializer = PostLogSerializer(postlog_list, many=True)
 
-    response_data = {"statusCode": "OK", "message": "OK", "content": serializer.data}
+    # 직렬화된 데이터를 리스트로 가져오기
+    d = serializer.data
+
+    # 각 게시물에 대해 좋아요 여부를 추가
+    for x in d:
+        if x["post_img"]:
+            x["post_img"] = json.loads(x["post_img"])
+    response_data = {"statusCode": "OK", "message": "OK", "content": d}
 
     return JsonResponse(response_data, status=status.HTTP_200_OK, safe=False)
 
 
 # 게시글 좋아요
-
 
 
 @csrf_exempt
@@ -476,7 +609,7 @@ def toggle_post_like(request, user_id):
 
         # 좋아요 추가/삭제 로직
         like, created = PostLikes.objects.get_or_create(user=user, post=post)
-        
+
         # 관련 키워드 가져오기
         tour_place = post.tour
         tour_keywords = TourPlace_TourKeyword.objects.filter(tour=tour_place)
