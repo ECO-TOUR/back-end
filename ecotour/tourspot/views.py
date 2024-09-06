@@ -26,7 +26,7 @@ def search_tour_places(request):
         # 검색어를 TourLog에 저장
         if request.user.is_authenticated:
             # 검색어와 일치하는 관광지의 tour_id 찾기
-            matching_place_ids = matching_places.values_list('tour_id', flat=True)
+            matching_place_ids = matching_places.values_list("tour_id", flat=True)
             tour_id = matching_place_ids[0] if matching_place_ids else None
 
             TourLog.objects.create(user=request.user, search_text=search_term, tour_id=tour_id)
@@ -54,7 +54,7 @@ def search_tour_places(request):
     return JsonResponse({"statusCode": 400, "message": "잘못된 요청입니다.", "error": "요청 메소드는 GET이어야 합니다."}, status=400)
 
 
-#관광지 상세정보
+# 관광지 상세정보
 @csrf_exempt
 def tour_place_detail(request, tour_id, user_id=None):
     if request.method == "GET":
@@ -116,7 +116,6 @@ def tour_place_detail(request, tour_id, user_id=None):
         return JsonResponse({"statusCode": 200, "place_detail": place_detail}, status=200)
 
     return JsonResponse({"statusCode": 400, "message": "잘못된 요청입니다.", "error": "요청 메소드는 GET이어야 합니다."}, status=400)
-
 
 
 # 사용자별 검색 기록 조회

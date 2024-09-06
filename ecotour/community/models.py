@@ -194,8 +194,8 @@ class Comments(models.Model):
 class KeywordRating(models.Model):
     keyrating_id = models.AutoField(primary_key=True)  # 자동 증가하는 기본 키
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="keyword_ratings")
-    keyword = models.ForeignKey('TourKeyword', on_delete=models.CASCADE, related_name="keyword_ratings")
-    rating = models.IntegerField(default=0)   # 평가
+    keyword = models.ForeignKey("TourKeyword", on_delete=models.CASCADE, related_name="keyword_ratings")
+    rating = models.IntegerField(default=0)  # 평가
 
     class Meta:
-        db_table = 'keyword_rating'  # 실제 테이블 이름
+        db_table = "keyword_rating"  # 실제 테이블 이름

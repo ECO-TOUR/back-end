@@ -1,5 +1,6 @@
 import json
-from community.models import Likes, TourPlace, TourKeyword, KeywordRating, TourPlace_TourKeyword
+
+from community.models import KeywordRating, Likes, TourPlace, TourPlace_TourKeyword
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ObjectDoesNotExist
 from django.db.models import Avg
@@ -8,6 +9,7 @@ from django.shortcuts import get_object_or_404
 from django.views.decorators.csrf import csrf_exempt
 
 User = get_user_model()
+
 
 @csrf_exempt
 def toggle_like(request, user_id):
@@ -21,7 +23,7 @@ def toggle_like(request, user_id):
 
         # TourPlace_has_TourKeyword 테이블에서 keyword_id 찾기
         tour_keywords = TourPlace_TourKeyword.objects.filter(tour=tour_place)
-        
+
         if not tour_keywords.exists():
             return JsonResponse({"statusCode": 404, "message": "관광지와 관련된 키워드를 찾을 수 없습니다."}, status=404)
 
@@ -64,9 +66,6 @@ def toggle_like(request, user_id):
             }
         )
     return JsonResponse({"statusCode": 400, "message": "잘못된 요청입니다.", "error": "요청 메소드는 POST여야 합니다."}, status=400)
-
-
-
 
 
 @csrf_exempt
