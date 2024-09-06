@@ -74,12 +74,12 @@ def tour_place_detail(request, tour_id):
         # 게시물 정보 구성
         post_details = [
             {
-                "post_id": post.post_id,  # 게시물 ID
-                "post_text": post.post_text,  # 게시물 내용
-                "user_id": post.user_id,  # 사용자 ID
-                "post_score": avg_score,  # 게시물 점수
-                "post_img": post.post_img,  # 게시물 이미지 URL
-                "last_modified": post.last_modified.isoformat(),  # 마지막 수정 시간
+                "post_id": post.post_id,
+                "post_text": post.post_text,
+                "user_id": post.user_id,
+                "post_score": avg_score,
+                "post_img": post.post_img,
+                "last_modified": post.last_modified.isoformat(),
             }
             for post in posts
         ]
@@ -87,6 +87,12 @@ def tour_place_detail(request, tour_id):
         # 빈 문자열을 None으로 변환하는 함수
         def empty_to_none(value):
             return None if value == "" else value
+
+        # 현재 로그인한 사용자의 찜 여부 확인
+        if request.user.is_authenticated:
+            tourspot_liked = "liked" if Likes.objects.filter(tour_id=tour_id, user=request.user).exists() else "unliked"
+        else:
+            tourspot_liked = "unliked"
 
         # 상세정보 및 게시물 반환
         place_detail = {
@@ -107,6 +113,7 @@ def tour_place_detail(request, tour_id):
             "parking": empty_to_none(place.parking),
             "avg_score": avg_score,
             "posts": post_details,
+            "tourspot_liked": tourspot_liked  # 사용자가 찜했는지 여부
         }
 
         return JsonResponse({"statusCode": 200, "place_detail": place_detail}, status=200)
