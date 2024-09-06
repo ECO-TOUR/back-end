@@ -77,7 +77,7 @@ def liked_places(request, user_id):
 
         # 사용자가 찜한 관광지가 없을 경우 400 오류 반환
         if not liked_places.exists():
-            return JsonResponse({"error": "해당 사용자가 찜한 관광지를 찾을 수 없습니다."}, status=400)
+            return JsonResponse([], safe=False, status=200)
 
         # 각 관광지에 대한 평균 점수 계산
         results = []
