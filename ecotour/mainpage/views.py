@@ -1,3 +1,4 @@
+from common.recommend import recommend
 from community.models import Banner, TourPlace
 from django.http import JsonResponse
 from django.utils import timezone
@@ -61,3 +62,15 @@ def viewcntmonth(request):
         # 예외 처리
         print(f"An error occurred: {str(e)}")
         return JsonResponse({"error": "An unexpected error occurred."}, safe=False, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+# 추천
+
+
+def recommendation(request, id):
+    tours = recommend(id)
+    tours_list = list(tours.values())
+    if len(tours_list) > 3:
+        tours_list = tours_list[:3]
+    response_data = {"statusCode": "OK", "message": "OK", "content": tours_list}
+    return JsonResponse(response_data, status=status.HTTP_200_OK, safe=False)
