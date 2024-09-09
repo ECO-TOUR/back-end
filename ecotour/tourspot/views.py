@@ -71,6 +71,10 @@ def tour_place_detail(request, tour_id, user_id=None):
         # 게시물 정보 조회
         posts = Post.objects.filter(tour_id=tour_id).select_related("user")
 
+        # 빈 문자열 또는 None을 "정보없음"으로 변환하는 함수
+        def value_or_info(value):
+            return "정보없음" if not value else value
+
         # 게시물 정보 구성
         post_details = [
             {
@@ -78,15 +82,11 @@ def tour_place_detail(request, tour_id, user_id=None):
                 "post_text": post.post_text,  # 게시물 내용
                 "user_id": post.user_id,  # 사용자 ID
                 "post_score": post.post_score,  # 게시물 점수 (각 게시물의 점수)
-                "post_img": post.post_img,  # 게시물 이미지 URL
+                "post_img": post.post_img if post.post_img else None,  # 게시물 이미지 URL (이미지가 있는 경우만)
                 "last_modified": post.last_modified.isoformat() if post.last_modified else None,  # 마지막 수정 시간
             }
             for post in posts
         ]
-
-        # 빈 문자열을 None으로 변환하는 함수
-        def empty_to_none(value):
-            return None if value == "" else value
 
         # 사용자가 해당 관광지를 찜했는지 확인
         user_liked = "liked" if user_id and Likes.objects.filter(user_id=user_id, tour_id=tour_id).exists() else "unliked"
@@ -94,20 +94,20 @@ def tour_place_detail(request, tour_id, user_id=None):
         # 상세정보 및 게시물 반환
         place_detail = {
             "tour_id": place.tour_id,
-            "tour_name": place.tour_name,
-            "tour_location": place.tour_location,
-            "tour_img": place.tour_img,
+            "tour_name": value_or_info(place.tour_name),
+            "tour_location": value_or_info(place.tour_location),
+            "tour_img": place.tour_img if place.tour_img else None,  # 이미지가 있는 경우만
             "tour_viewcnt": place.tour_viewcnt,
-            "tour_summary": place.tour_summary,
-            "tour_tel": empty_to_none(place.tour_tel),
-            "tour_telname": empty_to_none(place.tour_telname),
-            "tour_title": empty_to_none(place.tour_title),
-            "opening_hours": empty_to_none(place.opening_hours),
-            "tour_hours": empty_to_none(place.tour_hours),
-            "website": empty_to_none(place.website),
-            "fees": empty_to_none(place.fees),
-            "restrooms": empty_to_none(place.restrooms),
-            "parking": empty_to_none(place.parking),
+            "tour_summary": value_or_info(place.tour_summary),
+            "tour_tel": value_or_info(place.tour_tel),
+            "tour_telname": value_or_info(place.tour_telname),
+            "tour_title": value_or_info(place.tour_title),
+            "opening_hours": value_or_info(place.opening_hours),
+            "tour_hours": value_or_info(place.tour_hours),
+            "website": value_or_info(place.website),
+            "fees": value_or_info(place.fees),
+            "restrooms": value_or_info(place.restrooms),
+            "parking": value_or_info(place.parking),
             "avg_score": avg_score,  # 평균 점수
             "posts": post_details,
             "tourspot_liked": user_liked,  # 찜 여부
