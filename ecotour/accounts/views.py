@@ -6,7 +6,7 @@ import environ
 import jwt
 import requests
 from common.decorators import jwt_required
-from community.models import TourKeyword, User_Preference
+from community.models import KeywordRating, TourKeyword, User_Preference
 from django.conf import settings
 from django.contrib.auth import authenticate, get_user_model, login, logout
 from django.http import JsonResponse
@@ -414,7 +414,6 @@ class PreferenceAPIView(APIView):
         access_token = request.COOKIES.get("access_token")
 
         payload = jwt.decode(access_token, settings.SECRET_KEY, algorithms=["HS256"])
-
         user_id = payload.get("user_id")
 
         # Retrieve the user from the database
@@ -423,20 +422,44 @@ class PreferenceAPIView(APIView):
         except CustomUser.DoesNotExist:
             return Response({"error": "User not found"}, status=status.HTTP_404_NOT_FOUND)
 
-        preference_ids = request.data.get("preference")
+        # Get preference names from the request
+        preference_names = request.data.get("preference", [])
+        print(preference_names)
 
-        # Save each preference for the user
-        for preference_id in preference_ids:
-            try:
-                preference = TourKeyword.objects.get(keyword_id=preference_id)
-                User_Preference.objects.create(user=user, preference=preference)
-            except TourKeyword.DoesNotExist:
-                return Response({"error": f"Preference ID {preference_id} not found"}, status=status.HTTP_404_NOT_FOUND)
+        # Get all available keywords from the TourKeyword model
+        all_keywords = TourKeyword.objects.all()
+
+        for keyword in all_keywords:
+            # If the current keyword name is in the provided preferences
+            if keyword.keyword_name in preference_names:
+                try:
+                    # Add the preference to User_Preference
+                    User_Preference.objects.create(user=user, preference=keyword)
+
+                    # Update the rating: increase by 1 if matched
+                    rating, created = KeywordRating.objects.get_or_create(user=user, keyword=keyword)
+
+                    if not created:
+                        rating.rating += 1
+                    else:
+                        rating.rating = 1  # Set to 1 if it's a new entry
+
+                    rating.save()
+
+                except TourKeyword.DoesNotExist:
+                    return Response({"error": f"Preference '{keyword.keyword_name}' not found"}, status=status.HTTP_404_NOT_FOUND)
+            else:
+                # If the current keyword is NOT in the preferences, decrease the rating
+                rating, created = KeywordRating.objects.get_or_create(user=user, keyword=keyword)
+
+                if not created and rating.rating > 0:
+                    rating.rating -= 1  # Decrease rating by 1 if it's already there and greater than 0
+                    rating.save()
 
         response_data = {
             "statusCode": 200,
             "message": "OK",
-            "content": {"message": "선호키워드 조사가 성공적으로 반영되었습니다", "preference": preference_ids},
+            "content": {"message": "Preferences and ratings updated successfully.", "preference": preference_names},
         }
 
         # Return the response
