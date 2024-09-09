@@ -73,7 +73,7 @@ def tour_place_detail(request, tour_id, user_id=None):
 
         # 빈 문자열 또는 None을 "정보없음"으로 변환하는 함수
         def value_or_info(value):
-            return "정보없음" if not value else value
+            return "정보 없음" if not value else value
 
         # 게시물 정보 구성
         post_details = [
