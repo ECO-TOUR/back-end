@@ -14,7 +14,9 @@
     {% else %}
     <ol>
       <li><a href="{% url 'accounts:login' %}">로그인</a></li>
+      {% comment %}
       <li><a href="{% url 'accounts:signup' %}">회원가입</a></li>
+      {% endcomment %}
     </ol>
     {% endif %}
   </body>

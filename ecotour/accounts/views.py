@@ -5,6 +5,7 @@ from pathlib import Path
 import environ
 import jwt
 import requests
+import requests.cookies
 from common.decorators import jwt_required
 from community.models import KeywordRating, TourKeyword, User_Preference
 from django.conf import settings
@@ -17,7 +18,7 @@ from django.utils.decorators import method_decorator
 from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework_simplejwt.tokens import AccessToken, RefreshToken
 
 from .forms import LoginForm, SignUpForm
 from .models import CustomUser, RefreshTokenModel
@@ -88,7 +89,20 @@ def login_view(request):
 
 
 def logout_view(request):
-    refresh_token = request.COOKIES.get("refresh_token")
+    auth_header = request.headers.get("Authorization")
+
+    if auth_header and auth_header.startswith("Bearer "):
+        access_token = auth_header.split(" ")[1]  # Extract the token after "Bearer "
+    else:
+        # If the header is not present, check the cookie for the access token
+        access_token = request.COOKIES.get("access_token")
+
+    access_token_obj = AccessToken(access_token)
+    user_id = access_token_obj["user_id"]
+    user = User.objects.get(user_id=user_id)
+    request.user = user  # Attach user to request
+    refresh_token = RefreshTokenModel.objects.filter(user_id=user_id, blacklisted=False).first()  # Ensure the refresh token is not blacklisted
+
     if refresh_token:
         try:
             token_instance = RefreshTokenModel.objects.get(token=refresh_token)
@@ -170,8 +184,11 @@ def oauth_kakao_login_view(request):
     header = {"content-type": "application/x-www-form-urlencoded"}
     token_uri = "https://kauth.kakao.com/oauth/token"
     response_token = call("POST", token_uri, data, header)
-    request.session["access_token_kakao"] = response_token["access_token"]
-    request.session["refresh_token_kakao"] = response_token["refresh_token"]
+    kakao_access_token = response_token["access_token"]
+    kakao_refresh_token = response_token["refresh_token"]
+    kakao_id_token = response_token.get("id_token")
+    kakao_expires_in = response_token["refresh_token_expires_in"]
+    kakao_expires_at = timezone.now() + timedelta(seconds=kakao_expires_in)
 
     response_oicd = call("GET", "https://kapi.kakao.com/v1/oidc/userinfo", {}, {"Authorization": f'Bearer {response_token["access_token"]}'})
     request.session["user_id"] = int(response_oicd["sub"])
@@ -195,6 +212,14 @@ def oauth_kakao_login_view(request):
             username=nickname, password="dummy", nickname=nickname, profile_photo=photo  # No password needed for OAuth login
         )
 
+    # Blacklist all the existing, non-blacklisted tokens for the user
+    RefreshTokenModel.objects.filter(user=user, blacklisted=False).update(blacklisted=True)
+
+    user.oauth_kakao_access_token = kakao_access_token
+    user.oauth_kakao_refresh_token = kakao_refresh_token
+    user.oauth_kakao_id_token = kakao_id_token
+    user.oauth_kakao_expires_at = kakao_expires_at
+    user.save()
     # Log the user in
     login(request, user)
     # Issue JWT token
@@ -214,16 +239,51 @@ def oauth_kakao_login_view(request):
 
 
 def oauth_kakao_logout_view(request):
-    if request.session.get("user_id"):
+    auth_header = request.headers.get("Authorization")
 
-        uri = "https://kapi.kakao.com/v1/user/logout"
-        header = {"Authorization": f"Bearer {request.session.get('access_token_kakao')}"}
+    if auth_header and auth_header.startswith("Bearer "):
+        access_token = auth_header.split(" ")[1]  # Extract the token after "Bearer "
+    else:
+        # If the header is not present, check the cookie for the access token
+        access_token = request.COOKIES.get("access_token")
 
-        data = {"target_id_type": "user_id", "target_id": request.session.get("user_id")}
+    payload = jwt.decode(access_token, settings.SECRET_KEY, algorithms=["HS256"])
 
-        response_logout = call("POST", uri, data, header)
+    user_id = payload.get("user_id")
 
-        return JsonResponse(response_logout)
+    # Retrieve the user from the database
+    try:
+        user = CustomUser.objects.get(user_id=user_id)
+    except CustomUser.DoesNotExist:
+        return Response({"error": "User not found"}, status=status.HTTP_404_NOT_FOUND)
+
+    # Use the stored access_token to get user info from Kakao
+    user_info_uri = "https://kapi.kakao.com/v1/user/access_token_info"
+    headers = {"Authorization": f"Bearer {user.oauth_kakao_access_token}"}
+
+    response_user_info = call("GET", user_info_uri, {}, headers)
+
+    if "error" in response_user_info:
+        return Response(response_user_info, status=status.HTTP_400_BAD_REQUEST)
+
+    # Get the Kakao user ID from the response
+    kakao_user_id = response_user_info.get("id")
+
+    # Logout the user from Kakao
+    logout_uri = "https://kapi.kakao.com/v1/user/logout"
+    headers = {"Authorization": f"Bearer {user.oauth_kakao_access_token}"}
+    data = {"target_id_type": "user_id", "target_id": kakao_user_id}
+    response_logout = call("POST", logout_uri, data, headers)
+
+    if "error" in response_logout:
+        return Response(response_logout, status=status.HTTP_400_BAD_REQUEST)
+
+    # Invalidate the user's OAuth tokens in your database
+    user.oauth_kakao_access_token = None
+    user.oauth_kakao_refresh_token = None
+    user.oauth_kakao_id_token = None
+    user.oauth_kakao_expires_at = None
+    user.save()
 
 
 class OauthKaKaoLoginAPIView(APIView):
@@ -260,6 +320,9 @@ class OauthKaKaoLoginAPIView(APIView):
             user = User.objects.create_user(
                 username=nickname, password="dummy", nickname=nickname, profile_photo=photo  # No password needed for OAuth login
             )
+
+        # Blacklist all the existing, non-blacklisted tokens for the user
+        RefreshTokenModel.objects.filter(user=user, blacklisted=False).update(blacklisted=True)
 
         user.oauth_kakao_access_token = kakao_access_token
         user.oauth_kakao_refresh_token = kakao_refresh_token
@@ -298,8 +361,13 @@ class OauthKaKaoLoginAPIView(APIView):
 @method_decorator(jwt_required, name="dispatch")
 class OauthKaKaoLogoutAPIView(APIView):
     def post(self, request, *args, **kwargs):
-        # Get the user ID from the request (set by the jwt_required decorator)
-        access_token = request.COOKIES.get("access_token")
+        auth_header = request.headers.get("Authorization")
+
+        if auth_header and auth_header.startswith("Bearer "):
+            access_token = auth_header.split(" ")[1]  # Extract the token after "Bearer "
+        else:
+            # If the header is not present, check the cookie for the access token
+            access_token = request.COOKIES.get("access_token")
 
         payload = jwt.decode(access_token, settings.SECRET_KEY, algorithms=["HS256"])
 
@@ -361,8 +429,13 @@ class OauthKaKaoLogoutAPIView(APIView):
 @method_decorator(jwt_required, name="dispatch")
 class OauthKaKaoSignoutAPIView(APIView):
     def post(self, request, *args, **kwargs):
-        # Get the user ID from the request (set by the jwt_required decorator)
-        access_token = request.COOKIES.get("access_token")
+        auth_header = request.headers.get("Authorization")
+
+        if auth_header and auth_header.startswith("Bearer "):
+            access_token = auth_header.split(" ")[1]  # Extract the token after "Bearer "
+        else:
+            # If the header is not present, check the cookie for the access token
+            access_token = request.COOKIES.get("access_token")
 
         payload = jwt.decode(access_token, settings.SECRET_KEY, algorithms=["HS256"])
 
@@ -411,7 +484,13 @@ class OauthKaKaoSignoutAPIView(APIView):
 class PreferenceAPIView(APIView):
     def post(self, request, *args, **kwargs):
         # Get the user ID from the request (set by the jwt_required decorator)
-        access_token = request.COOKIES.get("access_token")
+        auth_header = request.headers.get("Authorization")
+
+        if auth_header and auth_header.startswith("Bearer "):
+            access_token = auth_header.split(" ")[1]  # Extract the token after "Bearer "
+        else:
+            # If the header is not present, check the cookie for the access token
+            access_token = request.COOKIES.get("access_token")
 
         payload = jwt.decode(access_token, settings.SECRET_KEY, algorithms=["HS256"])
         user_id = payload.get("user_id")
@@ -424,8 +503,6 @@ class PreferenceAPIView(APIView):
 
         # Get preference names from the request
         preference_names = request.data.get("preference", [])
-        print(preference_names)
-
         # Get all available keywords from the TourKeyword model
         all_keywords = TourKeyword.objects.all()
 

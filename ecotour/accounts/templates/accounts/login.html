@@ -23,6 +23,7 @@
     </script>
   </head>
   <body>
+    {% comment %}
     <h2>Login</h2>
     <form method="post">
       {% csrf_token %} {{ form.as_p }}
@@ -32,6 +33,7 @@
     <li><a href="{% url 'accounts:signup' %}">회원가입</a></li>
 
     <hr />
+    {% endcomment %}
 
     <div>
       <h2>카카오 로그인</h2>
@@ -42,14 +44,8 @@
           <img
             src="//k.kakaocdn.net/14/dn/btqCn0WEmI3/nijroPfbpCa4at5EIsjyf0/o.jpg"
             width="222"
-          /> </a
-        ><br />
-
-        <button onclick="REST_Call('/profile')">프로필 조회</button><br />
-
-        <textarea id="contents" rows="20" cols="100"></textarea><br />
-
-        <button onclick="REST_Call('/logout')">로그아웃</button><br />
+          />
+        </a>
       </div>
     </div>
   </body>

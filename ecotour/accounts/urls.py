@@ -14,7 +14,6 @@ from .views import (
     logout_view,
     oauth_kakao_login_view,
     oauth_kakao_logout_view,
-    profile,
     signup_view,
 )
 
@@ -34,5 +33,4 @@ urlpatterns = [
     path("api/oauth/kakao/logout/", OauthKaKaoLogoutAPIView.as_view(), name="api_oauth_kakao_logout"),
     path("api/oauth/kakao/signout/", OauthKaKaoSignoutAPIView.as_view(), name="api_oauth_kakao_signout"),
     path("api/preference/", PreferenceAPIView.as_view(), name="api_preference"),
-    path("profile/", profile, name="profile"),
 ]
