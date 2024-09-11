@@ -15,6 +15,7 @@ from django.shortcuts import redirect, render
 from django.urls import reverse
 from django.utils import timezone
 from django.utils.decorators import method_decorator
+from drf_yasg.utils import swagger_auto_schema
 from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -120,6 +121,7 @@ def logout_view(request):
 
 
 class SignUpAPIView(APIView):
+    @swagger_auto_schema(auto_schema=None)
     def post(self, request, *args, **kwargs):
         serializer = CustomUserSerializer(data=request.data)
         if serializer.is_valid():
@@ -129,6 +131,7 @@ class SignUpAPIView(APIView):
 
 
 class LoginAPIView(APIView):
+    @swagger_auto_schema(auto_schema=None)
     def post(self, request, *args, **kwargs):
         serializer = LoginSerializer(data=request.data)
         if serializer.is_valid():
@@ -146,6 +149,7 @@ class LoginAPIView(APIView):
 
 @method_decorator(jwt_required, name="dispatch")
 class LogoutAPIView(APIView):
+    @swagger_auto_schema(auto_schema=None)
     def post(self, request, *args, **kwargs):
         refresh_token = request.COOKIES.get("refresh_token")
         if refresh_token:
@@ -584,3 +588,66 @@ class OauthUserCheckAPIView(APIView):
 
         # If validation fails, return the errors
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class SwaggerOauthKaKaoLoginAPIView(APIView):
+    @swagger_auto_schema(auto_schema=None)
+    def get(self, request):
+        code = request.GET.get("code")
+        data = {
+            "grant_type": "authorization_code",
+            "client_id": env("KAKAO_CLIENT_ID"),
+            "redirect_uri": env("SWAGGER_KAKAO_REDIRECT_URI"),
+            "code": code,
+        }
+        header = {"content-type": "application/x-www-form-urlencoded"}
+        token_uri = "https://kauth.kakao.com/oauth/token"
+        response_token = call("POST", token_uri, data, header)
+
+        kakao_access_token = response_token["access_token"]
+        kakao_refresh_token = response_token["refresh_token"]
+        kakao_id_token = response_token.get("id_token")
+        kakao_expires_in = response_token["refresh_token_expires_in"]
+        kakao_expires_at = timezone.now() + timedelta(seconds=kakao_expires_in)
+
+        response_oicd = call("GET", "https://kapi.kakao.com/v1/oidc/userinfo", {}, {"Authorization": f'Bearer {response_token["access_token"]}'})
+        request.session["user_id"] = int(response_oicd["sub"])
+
+        try:
+            nickname = response_oicd["nickname"]
+        except BaseException:
+            nickname = response_oicd["sub"]
+
+        try:
+            photo = response_oicd["picture"]
+        except BaseException:
+            photo = None
+
+        # Authenticate user
+        user = authenticate(request, username=nickname, password="dummy")
+
+        if user is None:
+            # If user does not exist, create a new one
+            user = User.objects.create_user(
+                username=nickname, password="dummy", nickname=nickname, profile_photo=photo  # No password needed for OAuth login
+            )
+
+        # Blacklist all the existing, non-blacklisted tokens for the user
+        RefreshTokenModel.objects.filter(user=user, blacklisted=False).update(blacklisted=True)
+
+        user.oauth_kakao_access_token = kakao_access_token
+        user.oauth_kakao_refresh_token = kakao_refresh_token
+        user.oauth_kakao_id_token = kakao_id_token
+        user.oauth_kakao_expires_at = kakao_expires_at
+        user.save()
+        # Log the user in
+        login(request, user)
+        # Issue JWT token
+        token_instance = RefreshTokenModel.create_token(user)
+
+        token_instance.token
+        access_token = str(RefreshToken(token_instance.token).access_token)
+
+        # Redirect to Swagger UI and pass the token in the query params
+        swagger_ui_url = f"/swagger/?access_token={access_token}"
+        return redirect(swagger_ui_url)

@@ -15,6 +15,7 @@ from datetime import timedelta
 from pathlib import Path
 
 import environ
+from drf_yasg import openapi
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -58,7 +59,7 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
-    # "drf_yasg",
+    "drf_yasg",
     "rest_framework",
     "rest_framework_simplejwt",
     "community",
@@ -196,6 +197,45 @@ CORS_ALLOWED_ORIGINS = [
     # Add more origins as needed
 ]
 
+
 CORS_ALLOW_HEADERS = ["accept", "accept-encoding", "authorization", "content-type", "dnt", "origin", "user-agent", "x-csrftoken", "x-requested-with"]
 
 CORS_ALLOW_METHODS = ["DELETE", "GET", "OPTIONS", "PATCH", "POST", "PUT"]
+
+
+scope = ""
+scope_param = f"&scope={scope}" if scope else ""
+client_id = env("KAKAO_CLIENT_ID")
+redirect_uri = env("SWAGGER_KAKAO_REDIRECT_URI")
+link = f"https://kauth.kakao.com/oauth/authorize?client_id={client_id}&redirect_uri={redirect_uri}&response_type=code{scope_param}"
+
+
+SWAGGER_SETTINGS = {
+    "USE_SESSION_AUTH": False,
+    "SECURITY_DEFINITIONS": {
+        "Kakao OAuth2": {
+            "type": "oauth2",
+            "flow": "authorizationCode",
+            "authorizationUrl": link,
+            "tokenUrl": "https://kauth.kakao.com/oauth/token",
+            "in": "header",
+        },
+        "BearerAuth": {
+            "type": "apiKey",
+            "name": "Authorization",
+            "in": "header",  # Specify that the token should be passed in the Authorization header
+        },
+        "X-CSRFToken": {
+            "type": "apiKey",
+            "name": "X-CSRFToken",
+            "in": "header",  # Specify that the token should be passed in the Authorization header
+        },
+    },
+    "DEFAULT_INFO": openapi.Info(
+        title="Kakao OAuth API",
+        default_version="v1",
+        description="API for Kakao OAuth2 integration",
+        terms_of_service="https://www.example.com/terms/",
+        contact=openapi.Contact(email="contact@example.com"),
+    ),
+}
