@@ -242,6 +242,7 @@ def oauth_kakao_login_view(request):
     return response
 
 
+@method_decorator(jwt_required, name="dispatch")
 def oauth_kakao_logout_view(request):
     access_token = request.access_token
 
