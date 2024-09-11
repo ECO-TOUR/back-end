@@ -395,8 +395,7 @@ class OauthKaKaoLogoutAPIView(APIView):
         user.oauth_kakao_expires_at = None
         user.save()
 
-        # Log the user out from the Django session
-        refresh_token = request.COOKIES.get("refresh_token")
+        refresh_token = RefreshTokenModel.objects.filter(user_id=user_id, blacklisted=False).first()  # Ensure the refresh token is not blacklisted
         if refresh_token:
             try:
                 token_instance = RefreshTokenModel.objects.get(token=refresh_token)
