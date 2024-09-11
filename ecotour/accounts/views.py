@@ -610,10 +610,3 @@ class OauthUserCheckAPIView(APIView):
 
         # If validation fails, return the errors
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-
-def profile(request):
-    uri = "https://kapi.kakao.com/v2/user/me"
-    header = {"Authorization": f"Bearer {request.session.get('access_token_kakao')}"}
-    rtn = call("POST", uri, {}, header)
-    return JsonResponse(rtn)
