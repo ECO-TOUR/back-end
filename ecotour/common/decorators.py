@@ -37,6 +37,7 @@ def jwt_required(view_func):
             user_id = access_token_obj["user_id"]
             user = User.objects.get(user_id=user_id)
             request.user = user  # Attach user to request
+            request.access_token = access_token
 
         except (TokenError, User.DoesNotExist):
             # If access token is invalid or expired, check for valid refresh token
