@@ -242,9 +242,14 @@ def oauth_kakao_login_view(request):
     return response
 
 
-@method_decorator(jwt_required, name="dispatch")
 def oauth_kakao_logout_view(request):
-    access_token = request.access_token
+    auth_header = request.headers.get("Authorization")
+
+    if auth_header and auth_header.startswith("Bearer "):
+        access_token = auth_header.split(" ")[1]  # Extract the token after "Bearer "
+    else:
+        # If the header is not present, check the cookie for the access token
+        access_token = request.COOKIES.get("access_token")
 
     payload = jwt.decode(access_token, settings.SECRET_KEY, algorithms=["HS256"])
 
