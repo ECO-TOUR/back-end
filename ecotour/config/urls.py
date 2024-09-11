@@ -45,23 +45,12 @@ schema_view = get_schema_view(
 
 
 urlpatterns = [
-    # re_path(
-    #     r"swagger/(?P<format>\.json|\.yaml)",
-    #     schema_view.without_ui(cache_timeout=0),
-    #     name="schema-json",
-    # ),
     path("api/schema/", schema_view.with_ui("swagger", cache_timeout=0), name="schema-swagger-ui"),
     path("swagger/", TemplateView.as_view(template_name="swagger-ui.html"), name="swagger-ui"),
-    # path(
-    #     "swagger/",
-    #     schema_view.with_ui("swagger", cache_timeout=0),
-    #     name="schema-swagger-ui",
-    # ),
     path("redoc/", schema_view.with_ui("redoc", cache_timeout=0), name="schema-redoc-v1"),
     path("admin/", admin.site.urls),
     path("", index, name="index"),
     path("accounts/", include("accounts.urls")),
-    # path("community/", include("community.urls")),
     path("mainpage/", include("mainpage.urls")),
     path("tourlike/", include("tourlike.urls")),
     path("community/", include("community.urls")),

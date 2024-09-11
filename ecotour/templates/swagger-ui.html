@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
@@ -17,14 +17,14 @@
     <script>
       function getCookie(name) {
         let cookieValue = null;
-        if (document.cookie && document.cookie !== '') {
-          const cookies = document.cookie.split(';');
+        if (document.cookie && document.cookie !== "") {
+          const cookies = document.cookie.split(";");
           for (let i = 0; i < cookies.length; i++) {
             const cookie = cookies[i].trim();
             // Does this cookie string begin with the name we want?
-            if (cookie.substring(0, name.length + 1) === name + '=') {
+            if (cookie.substring(0, name.length + 1) === name + "=") {
               cookieValue = decodeURIComponent(
-                cookie.substring(name.length + 1)
+                cookie.substring(name.length + 1),
               );
               break;
             }
@@ -32,33 +32,81 @@
         }
         return cookieValue;
       }
+
+      // Interceptor to capture responses
+      const responseInterceptor = (response) => {
+        // Log all responses (optional)
+        console.log("API response:", response);
+
+        // Check if this is the API request you're interested in and if the status is 200
+        if (
+          response.url.includes("api/oauth/kakao/logout/") &&
+          response.status === 200
+        ) {
+          console.log("API request was successful! Performing some action...");
+          // Perform your custom action here
+
+          if (window.ui) {
+            const state = window.ui.getState().toJS();
+            const authorizedSchemes = state.auth.authorized;
+
+            // Manually clear BearerAuth and CSRF tokens
+            if (authorizedSchemes["BearerAuth"]) {
+              delete authorizedSchemes["BearerAuth"];
+              console.log("Manually cleared BearerAuth");
+            }
+
+            if (authorizedSchemes["X-CSRFToken"]) {
+              delete authorizedSchemes["X-CSRFToken"];
+              console.log("Manually cleared X-CSRFToken");
+            }
+
+            // Update the URL without reloading the page (optional)
+            const newUrl =
+              window.location.protocol +
+              "//" +
+              window.location.host +
+              "/swagger/";
+            // Set a 1-second timer before redirecting
+            setTimeout(function () {
+              console.log("Redirecting to:", newUrl);
+              window.location.href = newUrl; // Redirect to the new URL after 1 second
+            }, 1000); // 1000 milliseconds = 1 second
+          }
+        }
+        console.log("이거", response.body);
+        // Always return the response so Swagger can process it
+        return response;
+      };
     </script>
     <script>
       window.onload = function () {
         const ui = SwaggerUIBundle({
-          url: '/api/schema/', // Schema view URL
-          dom_id: '#swagger-ui',
+          url: "/api/schema/", // Schema view URL
+          dom_id: "#swagger-ui",
           presets: [SwaggerUIBundle.presets.apis, SwaggerUIStandalonePreset],
-          layout: 'StandaloneLayout',
+          layout: "StandaloneLayout",
+          // Use the responseInterceptor to listen to responses
+          responseInterceptor: responseInterceptor,
         });
 
         // Capture the access_token from the URL query string
         const urlParams = new URLSearchParams(window.location.search);
-        const accessToken = urlParams.get('access_token');
-        const csrfToken = getCookie('csrftoken'); // Get the CSRF token from cookies
+        const accessToken = urlParams.get("access_token");
+        const csrfToken = getCookie("csrftoken"); // Get the CSRF token from cookies
 
         // If access_token is found in the URL, preauthorize Swagger UI with it
         if (accessToken) {
-          const bearerToken = 'Bearer ' + accessToken;
-          ui.preauthorizeApiKey('Kakao OAuth2', bearerToken);
+          const bearerToken = "Bearer " + accessToken;
+          ui.preauthorizeApiKey("Kakao OAuth2", bearerToken);
 
           ui.authActions.authorize({
             BearerAuth: {
-              name: 'Authorization',
+              name: "Authorization",
               schema: {
-                type: 'apiKey',
-                in: 'header',
-                name: 'Authorization',
+                type: "apiKey",
+                in: "header",
+                name: "Authorization",
               },
               value: bearerToken,
             },
@@ -67,12 +115,12 @@
         // If CSRF token is available, include it in the request headers
         if (accessToken && csrfToken) {
           ui.authActions.authorize({
-            'X-CSRFToken': {
-              name: 'X-CSRFToken',
+            "X-CSRFToken": {
+              name: "X-CSRFToken",
               schema: {
-                type: 'apiKey',
-                in: 'header',
-                name: 'X-CSRFToken',
+                type: "apiKey",
+                in: "header",
+                name: "X-CSRFToken",
               },
               value: csrfToken,
             },
