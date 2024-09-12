@@ -15,7 +15,6 @@ from datetime import timedelta
 from pathlib import Path
 
 import environ
-from drf_yasg import openapi
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -73,7 +72,7 @@ MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
-    "django.middleware.csrf.CsrfViewMiddleware",
+    # "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
@@ -203,39 +202,39 @@ CORS_ALLOW_HEADERS = ["accept", "accept-encoding", "authorization", "content-typ
 CORS_ALLOW_METHODS = ["DELETE", "GET", "OPTIONS", "PATCH", "POST", "PUT"]
 
 
-scope = ""
-scope_param = f"&scope={scope}" if scope else ""
-client_id = env("KAKAO_CLIENT_ID")
-redirect_uri = env("SWAGGER_KAKAO_REDIRECT_URI")
-link = f"https://kauth.kakao.com/oauth/authorize?client_id={client_id}&redirect_uri={redirect_uri}&response_type=code{scope_param}"
+# scope = ""
+# scope_param = f"&scope={scope}" if scope else ""
+# client_id = env("KAKAO_CLIENT_ID")
+# redirect_uri = env("SWAGGER_KAKAO_REDIRECT_URI")
+# link = f"https://kauth.kakao.com/oauth/authorize?client_id={client_id}&redirect_uri={redirect_uri}&response_type=code{scope_param}"
 
 
-SWAGGER_SETTINGS = {
-    "USE_SESSION_AUTH": False,
-    "SECURITY_DEFINITIONS": {
-        "Kakao OAuth2": {
-            "type": "oauth2",
-            "flow": "authorizationCode",
-            "authorizationUrl": link,
-            "tokenUrl": "https://kauth.kakao.com/oauth/token",
-            "in": "header",
-        },
-        "BearerAuth": {
-            "type": "apiKey",
-            "name": "Authorization",
-            "in": "header",  # Specify that the token should be passed in the Authorization header
-        },
-        "X-CSRFToken": {
-            "type": "apiKey",
-            "name": "X-CSRFToken",
-            "in": "header",  # Specify that the token should be passed in the Authorization header
-        },
-    },
-    "DEFAULT_INFO": openapi.Info(
-        title="Kakao OAuth API",
-        default_version="v1",
-        description="API for Kakao OAuth2 integration",
-        terms_of_service="https://www.example.com/terms/",
-        contact=openapi.Contact(email="contact@example.com"),
-    ),
-}
+# SWAGGER_SETTINGS = {
+#     "USE_SESSION_AUTH": False,
+#     "SECURITY_DEFINITIONS": {
+#         "Kakao OAuth2": {
+#             "type": "oauth2",
+#             "flow": "authorizationCode",
+#             "authorizationUrl": link,
+#             "tokenUrl": "https://kauth.kakao.com/oauth/token",
+#             "in": "header",
+#         },
+#         "BearerAuth": {
+#             "type": "apiKey",
+#             "name": "Authorization",
+#             "in": "header",  # Specify that the token should be passed in the Authorization header
+#         },
+#         "X-CSRFToken": {
+#             "type": "apiKey",
+#             "name": "X-CSRFToken",
+#             "in": "header",  # Specify that the token should be passed in the Authorization header
+#         },
+#     },
+#     "DEFAULT_INFO": openapi.Info(
+#         title="Kakao OAuth API",
+#         default_version="v1",
+#         description="API for Kakao OAuth2 integration",
+#         terms_of_service="https://www.example.com/terms/",
+#         contact=openapi.Contact(email="contact@example.com"),
+#     ),
+# }
