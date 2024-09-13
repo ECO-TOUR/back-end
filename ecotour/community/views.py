@@ -498,9 +498,7 @@ def comment(request, id):
     d = serializer.data
 
     # 각 게시물에 대해 좋아요 여부를 추가
-    for x in d:
-        if x["post_img"]:
-            x["post_img"] = json.loads(x["post_img"])
+
     response_data = {"statusCode": "OK", "message": "OK", "content": d}
 
     return JsonResponse(response_data, status=status.HTTP_200_OK, safe=False)
@@ -538,11 +536,6 @@ def comment_write(request):
 
             # 직렬화된 데이터를 리스트로 가져오기
             d = serializer.data
-
-            # 각 게시물에 대해 좋아요 여부를 추가
-            for x in d:
-                if x["post_img"]:
-                    x["post_img"] = json.loads(x["post_img"])
 
             response_data = {"statusCode": "OK", "message": "OK", "content": d}
             addcommcnt(post_id)
