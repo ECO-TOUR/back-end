@@ -77,10 +77,11 @@ def login_view(request):
                 # Create response to redirect to the main page
                 response = redirect(reverse("index"))
 
+                # 쿠키 방식 주석처리
                 # Set the JWT token in the cookies
-                secure_cookie = settings.ENVIRONMENT == "production"
-                response.set_cookie("access_token", access_token, httponly=True, secure=secure_cookie, samesite="Lax")
-                response.set_cookie("refresh_token", str(refresh_token), httponly=True, secure=secure_cookie, samesite="Lax")
+                # secure_cookie = settings.ENVIRONMENT == "production"
+                # response.set_cookie("access_token", access_token, httponly=True, secure=secure_cookie, samesite="Lax")
+                # response.set_cookie("refresh_token", str(refresh_token), httponly=True, secure=secure_cookie, samesite="Lax")
                 return response
             else:
                 form.add_error(None, "Invalid username or password")
@@ -95,8 +96,10 @@ def logout_view(request):
     if auth_header and auth_header.startswith("Bearer "):
         access_token = auth_header.split(" ")[1]  # Extract the token after "Bearer "
     else:
+        # 쿠키 방식 주석처리
         # If the header is not present, check the cookie for the access token
-        access_token = request.COOKIES.get("access_token")
+        # access_token = request.COOKIES.get("access_token")
+        return JsonResponse({"error": "Token not found"}, status=status.HTTP_401_UNAUTHORIZED)
 
     access_token_obj = AccessToken(access_token)
     user_id = access_token_obj["user_id"]
@@ -115,8 +118,9 @@ def logout_view(request):
     logout(request)
 
     response = redirect("/")
-    response.delete_cookie("access_token")
-    response.delete_cookie("refresh_token")
+    # 쿠키 방식 주석처리
+    # response.delete_cookie("access_token")
+    # response.delete_cookie("refresh_token")
     return response
 
 
@@ -151,7 +155,9 @@ class LoginAPIView(APIView):
 class LogoutAPIView(APIView):
     @swagger_auto_schema(auto_schema=None)
     def post(self, request, *args, **kwargs):
-        refresh_token = request.COOKIES.get("refresh_token")
+        # 쿠키 방식 주석처리
+        # refresh_token = request.COOKIES.get("refresh_token")
+        refresh_token = request.headers.get("Authorization")  # 헤더에서 토큰을 가져오는 방식으로 변경
         if refresh_token:
             try:
                 token_instance = RefreshTokenModel.objects.get(token=refresh_token)
@@ -161,8 +167,9 @@ class LogoutAPIView(APIView):
 
         logout(request)
         response = Response(status=status.HTTP_204_NO_CONTENT)
-        response.delete_cookie("access_token")
-        response.delete_cookie("refresh_token")
+        # 쿠키 방식 주석처리
+        # response.delete_cookie("access_token")
+        # response.delete_cookie("refresh_token")
         return response
 
 
@@ -235,10 +242,11 @@ def oauth_kakao_login_view(request):
     # Create response to redirect to the main page
     response = redirect(reverse("index"))
 
+    # 쿠키 방식 주석처리
     # Set the JWT token in the cookies
-    secure_cookie = settings.ENVIRONMENT == "production"
-    response.set_cookie("access_token", access_token, httponly=True, secure=secure_cookie, samesite="Lax")
-    response.set_cookie("refresh_token", str(refresh_token), httponly=True, secure=secure_cookie, samesite="Lax")
+    # secure_cookie = settings.ENVIRONMENT == "production"
+    # response.set_cookie("access_token", access_token, httponly=True, secure=secure_cookie, samesite="Lax")
+    # response.set_cookie("refresh_token", str(refresh_token), httponly=True, secure=secure_cookie, samesite="Lax")
     return response
 
 
@@ -248,8 +256,10 @@ def oauth_kakao_logout_view(request):
     if auth_header and auth_header.startswith("Bearer "):
         access_token = auth_header.split(" ")[1]  # Extract the token after "Bearer "
     else:
+        # 쿠키 방식 주석처리
         # If the header is not present, check the cookie for the access token
-        access_token = request.COOKIES.get("access_token")
+        # access_token = request.COOKIES.get("access_token")
+        return JsonResponse({"error": "Token not found"}, status=status.HTTP_401_UNAUTHORIZED)
 
     payload = jwt.decode(access_token, settings.SECRET_KEY, algorithms=["HS256"])
 

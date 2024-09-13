@@ -84,6 +84,7 @@ def tour_place_detail(request, tour_id, user_id=None):
                 "post_score": post.post_score,  # 게시물 점수 (각 게시물의 점수)
                 "post_img": post.post_img if post.post_img else None,  # 게시물 이미지 URL (이미지가 있는 경우만)
                 "last_modified": post.last_modified.isoformat() if post.last_modified else None,  # 마지막 수정 시간
+                       
             }
             for post in posts
         ]
@@ -208,11 +209,23 @@ def postbytour(request, id):
 
     serializer = PostSerializer(post_list, many=True)
     summ = 0
-    cnt = 0
+    cnt = len(post_list)  # post_list의 개수를 바로 cnt에 할당
+
+    # post_score 합산
     for post in post_list:
-        cnt += 1
         summ += post.post_score
 
-    response_data = {"statusCode": "OK", "message": "OK", "content": {"data": serializer.data, "avg_score": summ / cnt, "count": cnt}}
+    # cnt가 0일 경우 avg_score는 0으로 처리
+    avg_score = summ / cnt if cnt > 0 else 0
+
+    response_data = {
+        "statusCode": "OK",
+        "message": "OK",
+        "content": {
+            "data": serializer.data,
+            "avg_score": avg_score,
+            "count": cnt
+        }
+    }
 
     return JsonResponse(response_data, status=status.HTTP_200_OK, safe=False)
