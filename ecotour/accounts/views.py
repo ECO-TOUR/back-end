@@ -73,7 +73,10 @@ def login_view(request):
 
                 refresh_token = token_instance.token
                 access_token = str(RefreshToken(token_instance.token).access_token)
-
+                # 추가한 코드
+                user.oauth_kakao_access_token = access_token
+                user.oauth_kakao_refresh_token = refresh_token
+                user.save()
                 # Create response to redirect to the main page
                 response = redirect(reverse("index"))
 
@@ -236,8 +239,8 @@ def oauth_kakao_login_view(request):
     # Issue JWT token
     token_instance = RefreshTokenModel.create_token(user)
 
-    refresh_token = token_instance.token
-    access_token = str(RefreshToken(token_instance.token).access_token)
+    token_instance.token
+    str(RefreshToken(token_instance.token).access_token)
 
     # Create response to redirect to the main page
     response = redirect(reverse("index"))
