@@ -18,7 +18,7 @@ class BannerSerializer(serializers.ModelSerializer):
 class PostSerializer(serializers.ModelSerializer):
     class Meta:
         model = Post
-        fields = ["post_id", "post_text", "user_id", "post_score", "post_img", "last_modified", "comm_cnt", "post_likes"]
+        fields = ["post_id", "post_text", "user_id", "post_score", "post_img", "last_modified", "comm_cnt", "post_likes", "tour_id"]
 
 
 class PostLogSerializer(serializers.ModelSerializer):
