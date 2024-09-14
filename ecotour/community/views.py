@@ -47,8 +47,18 @@ def postlist(request, id):
 
     # 각 게시물에 대해 좋아요 여부를 추가
     for x in d:
+        # post_img가 있는 경우 처리
         if x["post_img"]:
-            x["post_img"] = json.loads(x["post_img"])
+            try:
+                # 이중 이스케이프된 JSON 문자열 처리
+                parsed_img = json.loads(x["post_img"])  # 첫 번째 파싱
+                if isinstance(parsed_img, str):
+                    parsed_img = json.loads(parsed_img)  # 두 번째 파싱
+                
+                x["post_img"] = parsed_img
+            except json.JSONDecodeError as e:
+                print(f"JSON 파싱 오류: {e}, 대상파일: {x['post_img']}")
+                x["post_img"] = []  # 파싱 실패 시 기본값 설정
 
         if x["post_id"] in plike:  # 게시물 ID가 plike 리스트에 있는지 확인
             x["like"] = "yes"
@@ -56,7 +66,6 @@ def postlist(request, id):
             x["like"] = "no"
 
     # 응답 데이터 생성
-
     response_data = {"statusCode": "OK", "message": "OK", "content": d}
 
     return JsonResponse(response_data, safe=False)
@@ -333,23 +342,31 @@ def modify(request):
             post.user_id = data.get("user_id", post.user_id)
             post.tour_id = data.get("tour_id", post.tour_id)
 
+            # 기존 이미지 배열을 로드 (없을 경우 빈 배열로 처리)
+            try:
+                existing_imgs = json.loads(post.post_img) if post.post_img else []
+            except (TypeError, json.JSONDecodeError):
+                existing_imgs = []  # JSON 파싱 오류 시 빈 배열로 초기화
+
             # 이미지 파일 처리
             img_files = request.FILES.getlist("img")
             img_paths = []
 
-            img_paths = []
-            # Handle the image file upload and store its path
+            # 새로 업로드된 이미지를 처리하여 경로를 저장
             if img_files:
                 for i, img_file in enumerate(img_files):
                     # Define the path where you want to save the image
                     path = f"uploads/{post.post_id}/{img_file.name}"
                     # Save the image file to the storage system (e.g., S3)
                     full_path = default_storage.save(path, img_file)
-                    # Store the file path in the post_img field
+                    # Store the file path in the img_paths list
                     img_paths.append(settings.MEDIA_URL.replace("media/", "") + full_path)
-                # Save the post again with the image path
-                # print(img_paths)
-                post.post_img = json.dumps(img_paths) + post.post_img
+
+            # 기존 이미지와 새 이미지 배열을 결합
+            combined_imgs = existing_imgs + img_paths
+
+            # 배열을 JSON으로 직렬화하여 저장
+            post.post_img = json.dumps(combined_imgs)
             post.save()
 
             # 직렬화 및 응답
@@ -375,7 +392,6 @@ def modify(request):
 
     else:
         return JsonResponse({"error": "Only POST requests are allowed."}, status=404)
-
 
 def update_or_create_rating3(user_id, tour_id):
     try:
