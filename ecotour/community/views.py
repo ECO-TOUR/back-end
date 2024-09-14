@@ -308,8 +308,12 @@ def update_or_create_rating2(user_id, origin_tour_id, tour_id):
 def modify(request):
     if request.method == "POST":
         try:
-            # JSON 데이터를 파싱합니다.
-            data = json.loads(request.body)
+            # Content-Type 확인: multipart/form-data 인 경우 request.POST 사용
+            if request.content_type == "application/json":
+                data = json.loads(request.body)
+            else:
+                data = request.POST
+
             if not data:
                 raise json.JSONDecodeError("Empty JSON body", "", 0)
 
@@ -317,61 +321,51 @@ def modify(request):
             if not post_id:
                 raise KeyError("post_id")
 
-            # post_id로 Post 객체를 가져오거나 404 오류를 반환합니다.
-            post = get_object_or_404(Post, post_id=post_id)
-            post.tour_id
+            # post_id로 Post 객체 가져오기
+            post = get_object_or_404(Post, pk=post_id)
 
-            # 데이터를 업데이트합니다.
+            # 데이터 업데이트
             post.post_text = data.get("text", post.post_text)
-            img_files = request.FILES.getlist("img")
             post.post_likes = data.get("likes", post.post_likes)
             post.post_score = data.get("score", post.post_score)
             post.post_hashtag = data.get("hashtag", post.post_hashtag)
             post.last_modified = timezone.now()
-            user_id = data.get("user_id")
-            tour_id = data.get("tour_id", post.tour_id)
-            post.tour_id = tour_id
-            post.user_id = user_id
+            post.user_id = data.get("user_id", post.user_id)
+            post.tour_id = data.get("tour_id", post.tour_id)
+
+            # 이미지 파일 처리
+            img_files = request.FILES.getlist("img")
             img_paths = []
-            # Handle the image file upload and store its path
+
             if img_files:
-                for i, img_file in enumerate(img_files):
-                    # Define the path where you want to save the image
-                    path = f"uploads/{post.post_id}/{img_file.name}"
-                    # Save the image file to the storage system (e.g., S3)
+                for img_file in img_files:
+                    path = f"uploads/{post_id}/{img_file.name}"
                     full_path = default_storage.save(path, img_file)
-                    # Store the file path in the post_img field
                     img_paths.append(settings.MEDIA_URL.replace("media/", "") + full_path)
-                # Save the post again with the image path
-                # print(img_paths)
                 post.post_img = json.dumps(img_paths)
 
-            # 변경된 내용을 저장합니다.
             post.save()
 
-            # 객체를 직렬화합니다.
+            # 직렬화 및 응답
             serializer = PostSerializer(post)
-
-            # 직렬화된 데이터에서 이미지 URL 처리
-            d = serializer.data
-            if d.get("post_img"):
-                # 이미지 URL이 JSON 배열로 처리되어야 하는 경우
+            post_data = serializer.data
+            if post_data.get("post_img"):
                 try:
-                    d["post_img"] = json.loads(d["post_img"])
+                    post_data["post_img"] = json.loads(post_data["post_img"])
                 except (TypeError, json.JSONDecodeError):
-                    # JSON 배열 형식이 아닌 경우, 원래 문자열로 반환
                     pass
 
-            response_data = {"statusCode": "OK", "message": "OK", "content": d}
+            response_data = {"statusCode": "OK", "message": "OK", "content": post_data}
             return JsonResponse(response_data, status=status.HTTP_200_OK, safe=False)
 
-        except json.JSONDecodeError as e:
-            print(f"JSON decode error: {e}")
+        except json.JSONDecodeError:
             return JsonResponse({"error": "Invalid JSON format."}, status=400)
 
-        except KeyError as e:
-            print(f"Missing key: {e}")
+        except KeyError:
             return JsonResponse({"error": f"Missing key: {str(e)}"}, status=400)
+
+        except Exception:
+            return JsonResponse({"error": "An error occurred."}, status=500)
 
     else:
         return JsonResponse({"error": "Only POST requests are allowed."}, status=404)
