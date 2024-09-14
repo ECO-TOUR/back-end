@@ -323,7 +323,7 @@ def modify(request):
 
             # 데이터를 업데이트합니다.
             post.post_text = data.get("text", post.post_text)
-            post.post_img = data.get("img", post.post_img)
+            img_files = request.FILES.getlist("img")
             post.post_likes = data.get("likes", post.post_likes)
             post.post_score = data.get("score", post.post_score)
             post.post_hashtag = data.get("hashtag", post.post_hashtag)
@@ -332,6 +332,19 @@ def modify(request):
             tour_id = data.get("tour_id", post.tour_id)
             post.tour_id = tour_id
             post.user_id = user_id
+            img_paths = []
+            # Handle the image file upload and store its path
+            if img_files:
+                for i, img_file in enumerate(img_files):
+                    # Define the path where you want to save the image
+                    path = f"uploads/{post.post_id}/{img_file.name}"
+                    # Save the image file to the storage system (e.g., S3)
+                    full_path = default_storage.save(path, img_file)
+                    # Store the file path in the post_img field
+                    img_paths.append(settings.MEDIA_URL.replace("media/", "") + full_path)
+                # Save the post again with the image path
+                # print(img_paths)
+                post.post_img = json.dumps(img_paths)
 
             # 변경된 내용을 저장합니다.
             post.save()
@@ -403,9 +416,18 @@ def delete(request, id):
             return JsonResponse({"error": f"An unexpected error occurred: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
+@csrf_exempt
+def savelog(text, id):
+    postlog = PostLog.objects.create(search_date=timezone.now(), search_text=text, user_id=id)
+    postlog.save()
+    # response_data = {"statusCode": "OK", "message": "OK", "content": "OK"}
+
+    # return JsonResponse(response_data, status=status.HTTP_200_OK, safe=False)
+
+
 # 검색기능
-def search_post(request, sorttype, text):
-    savelog(text, 1)  # id=1
+def search_post(request, sorttype, text, id):
+    savelog(text, id)
     print(sorttype, text)
     if not text.strip():  # 빈 문자열이나 공백만 있는 경우 처리
         return JsonResponse({"error": "No search text provided."}, status=status.HTTP_400_BAD_REQUEST)
@@ -449,10 +471,6 @@ def search_post(request, sorttype, text):
     # 직렬화된 데이터를 리스트로 가져오기
     d = serializer.data
 
-    # 각 게시물에 대해 좋아요 여부를 추가
-    for x in d:
-        if x["post_img"]:
-            x["post_img"] = json.loads(x["post_img"])
     response_data = {"statusCode": "OK", "message": "OK", "content": d}
 
     return JsonResponse(response_data, status=status.HTTP_200_OK, safe=False)
@@ -547,15 +565,6 @@ def comment_write(request):
             return JsonResponse({"error": "An unexpected error occurred."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     else:
         return JsonResponse({"error": "Invalid HTTP method."}, status=status.HTTP_400_BAD_REQUEST)
-
-
-@csrf_exempt
-def savelog(text, id):
-    postlog = PostLog.objects.create(search_date=timezone.now(), search_text=text, user_id=id)
-    postlog.save()
-    response_data = {"statusCode": "OK", "message": "OK", "content": "OK"}
-
-    return JsonResponse(response_data, status=status.HTTP_200_OK, safe=False)
 
 
 @csrf_exempt
