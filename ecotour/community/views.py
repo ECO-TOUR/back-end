@@ -349,7 +349,7 @@ def modify(request):
                     img_paths.append(settings.MEDIA_URL.replace("media/", "") + full_path)
                 # Save the post again with the image path
                 # print(img_paths)
-                post.post_img = json.dumps(img_paths)
+                post.post_img = json.dumps(img_paths) + post.post_img
             post.save()
 
             # 직렬화 및 응답
