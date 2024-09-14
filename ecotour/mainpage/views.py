@@ -1,5 +1,6 @@
 from common.recommend import recommend
 from community.models import Banner, TourPlace
+from django.db.models import Avg
 from django.http import JsonResponse
 from django.utils import timezone
 from rest_framework import status
@@ -64,13 +65,30 @@ def viewcntmonth(request):
         return JsonResponse({"error": "An unexpected error occurred."}, safe=False, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
-# 추천
+def calscore(tour_list):
+    for x in tour_list:
+        # tour_id에 해당하는 post_score의 평균을 계산 (None 처리 포함)
+        score = Post.objects.filter(tour_id=x["tour_id"]).aggregate(avg_score=Avg("post_score"))["avg_score"] or 0
+        # tour_id에 해당하는 post의 수를 계산
+        count = Post.objects.filter(tour_id=x["tour_id"]).count()
+
+        # 결과를 tour_list에 추가
+        x["score"] = score
+        x["count"] = count
+    return tour_list
 
 
+# 추천 함수
 def recommendation(request, id):
     tours = recommend(id)
-    tours_list = list(tours.values())
+    tours_list = list(tours.values())  # 추천된 투어 리스트를 받아옴
+
+    # 투어 리스트가 3개 이상인 경우, 최대 3개만 처리
     if len(tours_list) > 3:
         tours_list = tours_list[:3]
+
+    # 각 투어의 점수와 게시물 개수 계산
+    tours_list = calscore(tours_list)
+
     response_data = {"statusCode": "OK", "message": "OK", "content": tours_list}
     return JsonResponse(response_data, status=status.HTTP_200_OK, safe=False)

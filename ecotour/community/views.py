@@ -337,13 +337,19 @@ def modify(request):
             img_files = request.FILES.getlist("img")
             img_paths = []
 
+            img_paths = []
+            # Handle the image file upload and store its path
             if img_files:
-                for img_file in img_files:
-                    path = f"uploads/{post_id}/{img_file.name}"
+                for i, img_file in enumerate(img_files):
+                    # Define the path where you want to save the image
+                    path = f"uploads/{post.post_id}/{img_file.name}"
+                    # Save the image file to the storage system (e.g., S3)
                     full_path = default_storage.save(path, img_file)
+                    # Store the file path in the post_img field
                     img_paths.append(settings.MEDIA_URL.replace("media/", "") + full_path)
+                # Save the post again with the image path
+                # print(img_paths)
                 post.post_img = json.dumps(img_paths)
-
             post.save()
 
             # 직렬화 및 응답
