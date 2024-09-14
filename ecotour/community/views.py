@@ -362,7 +362,7 @@ def modify(request):
             return JsonResponse({"error": "Invalid JSON format."}, status=400)
 
         except KeyError:
-            return JsonResponse({"error": f"Missing key: {str(e)}"}, status=400)
+            return JsonResponse({"error": "Missing key: "}, status=400)
 
         except Exception:
             return JsonResponse({"error": "An error occurred."}, status=500)

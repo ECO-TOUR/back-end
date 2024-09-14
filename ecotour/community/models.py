@@ -117,7 +117,7 @@ class Likes(models.Model):
 # Post 모델
 class Post(models.Model):
     post_id = models.AutoField(primary_key=True)
-    post_text = models.TextField(null=True, blank=True)
+    post_text = models.TextField(null=True, blank=True, db_collation="utf8mb4_unicode_ci")
     post_img = models.TextField(null=True, blank=True)
     post_date = models.DateTimeField()
     post_likes = models.IntegerField(default=0)
