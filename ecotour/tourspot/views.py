@@ -7,7 +7,9 @@ from django.http import JsonResponse
 from django.shortcuts import get_object_or_404
 from django.views.decorators.csrf import csrf_exempt
 from rest_framework import status
-
+from common.decorators import jwt_required
+import jwt
+from accounts.models import CustomUser
 
 # 관광지 검색
 @csrf_exempt
@@ -20,22 +22,30 @@ def search_tour_places(request):
         # 관광지 검색어와 일치하는 관광지 찾기
         matching_places = TourPlace.objects.filter(tour_name__icontains=search_term)
 
-        # 관광지의 search_count 증가
-        TourPlace.objects.filter(tour_name__icontains=search_term).update(search_count=F("search_count") + 1)
-
         # 검색어를 TourLog에 저장
-        if request.user.is_authenticated:
-            # 검색어와 일치하는 관광지의 tour_id 찾기
-            matching_place_ids = matching_places.values_list("tour_id", flat=True)
-            tour_id = matching_place_ids[0] if matching_place_ids else None
+        # 검색어와 일치하는 관광지의 tour_id 찾기
+        access_token = request.access_token
+        payload = jwt.decode(access_token, settings.SECRET_KEY, algorithms=["HS256"])
+        user_id = payload.get("user_id")
 
-            TourLog.objects.create(user=request.user, search_text=search_term, tour_id=tour_id)
+        # Retrieve the user from the database
+        try:
+            user = CustomUser.objects.get(user_id=user_id)
+        except CustomUser.DoesNotExist:
+            return Response({"error": "User not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        matching_place_ids = matching_places.values_list("tour_id", flat=True)
+        tour_id = matching_place_ids[0] if matching_place_ids else None
+
+        TourLog.objects.create(user=user, search_text=search_term, tour_id=tour_id)
 
         # 관광지 검색 결과 파싱 및 반환
         search_results = []
         for place in matching_places:
             avg_score = Post.objects.filter(tour_id=place.tour_id).aggregate(Avg("post_score"))["post_score__avg"] or 0
             search_count = TourLog.objects.filter(search_text=search_term).count()
+
+            user_liked = "liked" if user_id and Likes.objects.filter(user_id=user_id, tour_id=tour_id).exists() else "unliked"
 
             search_results.append(
                 {
@@ -46,6 +56,7 @@ def search_tour_places(request):
                     "tour_viewcnt": place.tour_viewcnt,
                     "avg_score": avg_score,
                     "search_count": search_count,
+                    "tourspot_liked": user_liked, 
                 }
             )
 
@@ -60,6 +71,11 @@ def tour_place_detail(request, tour_id, user_id=None):
     if request.method == "GET":
         # 관광지 상세정보 조회
         place = get_object_or_404(TourPlace, tour_id=tour_id)
+
+        
+        search_term = request.GET.get("search", "").strip()
+        # 관광지의 search_count 증가
+        TourPlace.objects.filter(tour_name__icontains=search_term).update(search_count=F("search_count") + 1)
 
         # 관광지 조회수 증가
         place.tour_viewcnt += 1
