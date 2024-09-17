@@ -1,5 +1,7 @@
 import logging
 
+import jwt
+from accounts.models import CustomUser
 from community.models import Post, TourLog, TourPlace
 from community.serializers import *
 from django.db.models import Avg, F
@@ -7,9 +9,7 @@ from django.http import JsonResponse
 from django.shortcuts import get_object_or_404
 from django.views.decorators.csrf import csrf_exempt
 from rest_framework import status
-from common.decorators import jwt_required
-import jwt
-from accounts.models import CustomUser
+
 
 # 관광지 검색
 @csrf_exempt
@@ -56,7 +56,7 @@ def search_tour_places(request):
                     "tour_viewcnt": place.tour_viewcnt,
                     "avg_score": avg_score,
                     "search_count": search_count,
-                    "tourspot_liked": user_liked, 
+                    "tourspot_liked": user_liked,
                 }
             )
 
@@ -72,7 +72,6 @@ def tour_place_detail(request, tour_id, user_id=None):
         # 관광지 상세정보 조회
         place = get_object_or_404(TourPlace, tour_id=tour_id)
 
-        
         search_term = request.GET.get("search", "").strip()
         # 관광지의 search_count 증가
         TourPlace.objects.filter(tour_name__icontains=search_term).update(search_count=F("search_count") + 1)
@@ -100,7 +99,6 @@ def tour_place_detail(request, tour_id, user_id=None):
                 "post_score": post.post_score,  # 게시물 점수 (각 게시물의 점수)
                 "post_img": post.post_img if post.post_img else None,  # 게시물 이미지 URL (이미지가 있는 경우만)
                 "last_modified": post.last_modified.isoformat() if post.last_modified else None,  # 마지막 수정 시간
-                       
             }
             for post in posts
         ]
@@ -234,14 +232,6 @@ def postbytour(request, id):
     # cnt가 0일 경우 avg_score는 0으로 처리
     avg_score = summ / cnt if cnt > 0 else 0
 
-    response_data = {
-        "statusCode": "OK",
-        "message": "OK",
-        "content": {
-            "data": serializer.data,
-            "avg_score": avg_score,
-            "count": cnt
-        }
-    }
+    response_data = {"statusCode": "OK", "message": "OK", "content": {"data": serializer.data, "avg_score": avg_score, "count": cnt}}
 
     return JsonResponse(response_data, status=status.HTTP_200_OK, safe=False)
