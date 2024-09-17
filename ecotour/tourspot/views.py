@@ -22,21 +22,33 @@ def search_tour_places(request):
         # 관광지 검색어와 일치하는 관광지 찾기
         matching_places = TourPlace.objects.filter(tour_name__icontains=search_term)
 
-        # 검색어를 TourLog에 저장
-        # 검색어와 일치하는 관광지의 tour_id 찾기
-        access_token = request.access_token
-        payload = jwt.decode(access_token, settings.SECRET_KEY, algorithms=["HS256"])
+        # Authorization 헤더에서 토큰 추출
+        auth_header = request.headers.get('Authorization')
+        if auth_header and auth_header.startswith('Bearer '):
+            access_token = auth_header.split(' ')[1]  # Bearer 뒤의 토큰 값만 추출
+        else:
+            return JsonResponse({"statusCode": 401, "message": "인증 토큰이 없습니다."}, status=401)  # 바뀐 부분
+
+        # JWT 디코딩 및 사용자 ID 추출
+        try:
+            payload = jwt.decode(access_token, settings.SECRET_KEY, algorithms=["HS256"])
+        except jwt.ExpiredSignatureError:
+            return JsonResponse({"statusCode": 401, "message": "토큰이 만료되었습니다."}, status=401)  # 바뀐 부분
+        except jwt.InvalidTokenError:
+            return JsonResponse({"statusCode": 401, "message": "유효하지 않은 토큰입니다."}, status=401)  # 바뀐 부분
+
         user_id = payload.get("user_id")
 
         # Retrieve the user from the database
         try:
             user = CustomUser.objects.get(user_id=user_id)
         except CustomUser.DoesNotExist:
-            return Response({"error": "User not found"}, status=status.HTTP_404_NOT_FOUND)
+            return JsonResponse({"statusCode": 404, "message": "User not found"}, status=404)  # 바뀐 부분
 
         matching_place_ids = matching_places.values_list("tour_id", flat=True)
         tour_id = matching_place_ids[0] if matching_place_ids else None
 
+        # 검색어를 TourLog에 저장
         TourLog.objects.create(user=user, search_text=search_term, tour_id=tour_id)
 
         # 관광지 검색 결과 파싱 및 반환
@@ -45,20 +57,18 @@ def search_tour_places(request):
             avg_score = Post.objects.filter(tour_id=place.tour_id).aggregate(Avg("post_score"))["post_score__avg"] or 0
             search_count = TourLog.objects.filter(search_text=search_term).count()
 
-            user_liked = "liked" if user_id and Likes.objects.filter(user_id=user_id, tour_id=tour_id).exists() else "unliked"
+            user_liked = "liked" if user_id and Likes.objects.filter(user_id=user_id, tour_id=place.tour_id).exists() else "unliked"
 
-            search_results.append(
-                {
-                    "tour_id": place.tour_id,
-                    "tour_name": place.tour_name,
-                    "tour_img": place.tour_img,
-                    "tour_location": place.tour_location,
-                    "tour_viewcnt": place.tour_viewcnt,
-                    "avg_score": avg_score,
-                    "search_count": search_count,
-                    "tourspot_liked": user_liked,
-                }
-            )
+            search_results.append({
+                "tour_id": place.tour_id,
+                "tour_name": place.tour_name,
+                "tour_img": place.tour_img,
+                "tour_location": place.tour_location,
+                "tour_viewcnt": place.tour_viewcnt,
+                "avg_score": avg_score,
+                "search_count": search_count,
+                "tourspot_liked": user_liked,
+            })
 
         return JsonResponse({"statusCode": 200, "search_results": search_results}, status=200)
 
