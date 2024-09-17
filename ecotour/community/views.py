@@ -54,7 +54,7 @@ def postlist(request, id):
                 parsed_img = json.loads(x["post_img"])  # 첫 번째 파싱
                 if isinstance(parsed_img, str):
                     parsed_img = json.loads(parsed_img)  # 두 번째 파싱
-                
+
                 x["post_img"] = parsed_img
             except json.JSONDecodeError as e:
                 print(f"JSON 파싱 오류: {e}, 대상파일: {x['post_img']}")
@@ -392,6 +392,7 @@ def modify(request):
 
     else:
         return JsonResponse({"error": "Only POST requests are allowed."}, status=404)
+
 
 def update_or_create_rating3(user_id, tour_id):
     try:

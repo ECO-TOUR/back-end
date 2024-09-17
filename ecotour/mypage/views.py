@@ -18,17 +18,9 @@ User = get_user_model()
 @method_decorator(jwt_required, name="dispatch")
 class mypageInguireAPIView(APIView):
     def get(self, request, *args, **kwargs):
-        # Get the user ID from the request (set by the jwt_required decorator)
-        auth_header = request.headers.get("Authorization")
-
-        if auth_header and auth_header.startswith("Bearer "):
-            access_token = auth_header.split(" ")[1]  # Extract the token after "Bearer "
-        else:
-            # If the header is not present, check the cookie for the access token
-            access_token = request.COOKIES.get("access_token")
+        access_token = request.access_token
 
         payload = jwt.decode(access_token, settings.SECRET_KEY, algorithms=["HS256"])
-
         user_id = payload.get("user_id")
 
         # Retrieve the user from the database
