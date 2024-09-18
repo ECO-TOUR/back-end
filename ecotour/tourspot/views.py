@@ -23,9 +23,9 @@ def search_tour_places(request):
         matching_places = TourPlace.objects.filter(tour_name__icontains=search_term)
 
         # Authorization 헤더에서 토큰 추출
-        auth_header = request.headers.get('Authorization')
-        if auth_header and auth_header.startswith('Bearer '):
-            access_token = auth_header.split(' ')[1]  # Bearer 뒤의 토큰 값만 추출
+        auth_header = request.headers.get("Authorization")
+        if auth_header and auth_header.startswith("Bearer "):
+            access_token = auth_header.split(" ")[1]  # Bearer 뒤의 토큰 값만 추출
         else:
             return JsonResponse({"statusCode": 401, "message": "인증 토큰이 없습니다."}, status=401)  # 바뀐 부분
 
@@ -59,16 +59,18 @@ def search_tour_places(request):
 
             user_liked = "liked" if user_id and Likes.objects.filter(user_id=user_id, tour_id=place.tour_id).exists() else "unliked"
 
-            search_results.append({
-                "tour_id": place.tour_id,
-                "tour_name": place.tour_name,
-                "tour_img": place.tour_img,
-                "tour_location": place.tour_location,
-                "tour_viewcnt": place.tour_viewcnt,
-                "avg_score": avg_score,
-                "search_count": search_count,
-                "tourspot_liked": user_liked,
-            })
+            search_results.append(
+                {
+                    "tour_id": place.tour_id,
+                    "tour_name": place.tour_name,
+                    "tour_img": place.tour_img,
+                    "tour_location": place.tour_location,
+                    "tour_viewcnt": place.tour_viewcnt,
+                    "avg_score": avg_score,
+                    "search_count": search_count,
+                    "tourspot_liked": user_liked,
+                }
+            )
 
         return JsonResponse({"statusCode": 200, "search_results": search_results}, status=200)
 
