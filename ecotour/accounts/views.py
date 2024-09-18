@@ -229,6 +229,7 @@ def oauth_kakao_login_view(request):
     # Blacklist all the existing, non-blacklisted tokens for the user
     RefreshTokenModel.objects.filter(user=user, blacklisted=False).update(blacklisted=True)
 
+    user.profile_photo = photo
     user.oauth_kakao_access_token = kakao_access_token
     user.oauth_kakao_refresh_token = kakao_refresh_token
     user.oauth_kakao_id_token = kakao_id_token
@@ -341,6 +342,7 @@ class OauthKaKaoLoginAPIView(APIView):
         # Blacklist all the existing, non-blacklisted tokens for the user
         RefreshTokenModel.objects.filter(user=user, blacklisted=False).update(blacklisted=True)
 
+        user.profile_photo = photo
         user.oauth_kakao_access_token = kakao_access_token
         user.oauth_kakao_refresh_token = kakao_refresh_token
         user.oauth_kakao_id_token = kakao_id_token
