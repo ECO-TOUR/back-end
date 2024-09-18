@@ -1,3 +1,4 @@
+import json
 import logging
 
 import jwt
@@ -232,10 +233,33 @@ def autocomplete_search(request):
 
 def postbytour(request, id):
     post_list = Post.objects.filter(tour_id=id)
-
     serializer = PostSerializer(post_list, many=True)
+
+    post_data = []
+    for post, post_info in zip(post_list, serializer.data):
+        x = post.user_id
+        user = CustomUser.objects.get(user_id=x)
+        nickname = user.nickname
+        profile = user.profile_photo
+
+        img_paths = []
+        img_files = post.post_img  # Assuming post_img is a JSON-like string
+
+        # If post_img is a stringified list, we use json.loads to safely convert it to a Python list
+        if img_files:
+            try:
+                img_paths = json.loads(img_files)  # Convert JSON string to a list
+            except json.JSONDecodeError:
+                img_paths = []  # Handle case where it's not a valid JSON string
+
+        post_info["post_img"] = img_paths  # Add img_paths as a list to post_info
+        post_info["nickname"] = nickname
+        post_info["profile_photo"] = profile
+
+        post_data.append(post_info)
+
     summ = 0
-    cnt = len(post_list)  # post_list의 개수를 바로 cnt에 할당
+    cnt = len(post_list)
 
     # post_score 합산
     for post in post_list:
@@ -244,6 +268,10 @@ def postbytour(request, id):
     # cnt가 0일 경우 avg_score는 0으로 처리
     avg_score = summ / cnt if cnt > 0 else 0
 
-    response_data = {"statusCode": "OK", "message": "OK", "content": {"data": serializer.data, "avg_score": avg_score, "count": cnt}}
+    response_data = {
+        "statusCode": "OK",
+        "message": "OK",
+        "content": {"data": post_data, "avg_score": avg_score, "count": cnt},  # Pass the post data with nickname, profile, and image paths
+    }
 
     return JsonResponse(response_data, status=status.HTTP_200_OK, safe=False)
