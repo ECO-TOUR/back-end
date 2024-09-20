@@ -10,10 +10,12 @@ from django.http import JsonResponse
 from django.shortcuts import get_object_or_404
 from django.views.decorators.csrf import csrf_exempt
 from rest_framework import status
-
+from django.utils.decorators import method_decorator
+from common.decorators import jwt_required
 
 # 관광지 검색
-@csrf_exempt
+
+@jwt_required
 def search_tour_places(request):
     if request.method == "GET":
         search_term = request.GET.get("search", "").strip()
@@ -23,20 +25,9 @@ def search_tour_places(request):
         # 관광지 검색어와 일치하는 관광지 찾기
         matching_places = TourPlace.objects.filter(tour_name__icontains=search_term)
 
-        # Authorization 헤더에서 토큰 추출
-        auth_header = request.headers.get("Authorization")
-        if auth_header and auth_header.startswith("Bearer "):
-            access_token = auth_header.split(" ")[1]  # Bearer 뒤의 토큰 값만 추출
-        else:
-            return JsonResponse({"statusCode": 401, "message": "인증 토큰이 없습니다."}, status=401)  # 바뀐 부분
+        access_token = request.access_token
 
-        # JWT 디코딩 및 사용자 ID 추출
-        try:
-            payload = jwt.decode(access_token, settings.SECRET_KEY, algorithms=["HS256"])
-        except jwt.ExpiredSignatureError:
-            return JsonResponse({"statusCode": 401, "message": "토큰이 만료되었습니다."}, status=401)  # 바뀐 부분
-        except jwt.InvalidTokenError:
-            return JsonResponse({"statusCode": 401, "message": "유효하지 않은 토큰입니다."}, status=401)  # 바뀐 부분
+        payload = jwt.decode(access_token, settings.SECRET_KEY, algorithms=["HS256"])
 
         user_id = payload.get("user_id")
 
