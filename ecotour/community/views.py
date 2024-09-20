@@ -332,7 +332,7 @@ def modify(request):
 
             # post_id로 Post 객체 가져오기
             post = get_object_or_404(Post, pk=post_id)
-
+            print('받은 데이터', data)
             # 데이터 업데이트
             post.post_text = data.get("text", post.post_text)
             post.post_likes = data.get("likes", post.post_likes)
@@ -341,13 +341,15 @@ def modify(request):
             post.last_modified = timezone.now()
             post.user_id = data.get("user_id", post.user_id)
             post.tour_id = data.get("tour_id", post.tour_id)
-
-            # 기존 이미지 배열을 로드 (없을 경우 빈 배열로 처리)
-            try:
-                existing_imgs = json.loads(post.post_img) if post.post_img else []
-            except (TypeError, json.JSONDecodeError):
-                existing_imgs = []  # JSON 파싱 오류 시 빈 배열로 초기화
-
+   
+            # 기존 이미지 배열을 old_img에서 가져옴
+            old_imgs = request.POST.getlist('old_img') 
+            if not isinstance(old_imgs, list):
+                old_imgs = []  # old_img가 배열이 아닌 경우 빈 배열로 처리
+                    
+            # old_img 정보를 출력
+            # print("Received old_img:", old_imgs)
+            
             # 이미지 파일 처리
             img_files = request.FILES.getlist("img")
             img_paths = []
@@ -363,7 +365,7 @@ def modify(request):
                     img_paths.append(settings.MEDIA_URL.replace("media/", "") + full_path)
 
             # 기존 이미지와 새 이미지 배열을 결합
-            combined_imgs = existing_imgs + img_paths
+            combined_imgs = old_imgs + img_paths
 
             # 배열을 JSON으로 직렬화하여 저장
             post.post_img = json.dumps(combined_imgs)
