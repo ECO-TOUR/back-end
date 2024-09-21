@@ -1,5 +1,8 @@
+import json
 import logging
 
+import jwt
+from accounts.models import CustomUser
 from community.models import Post, TourLog, TourPlace
 from community.serializers import *
 from django.db.models import Avg, F
@@ -7,10 +10,12 @@ from django.http import JsonResponse
 from django.shortcuts import get_object_or_404
 from django.views.decorators.csrf import csrf_exempt
 from rest_framework import status
-
+from django.utils.decorators import method_decorator
+from common.decorators import jwt_required
 
 # 관광지 검색
-@csrf_exempt
+
+@jwt_required
 def search_tour_places(request):
     if request.method == "GET":
         search_term = request.GET.get("search", "").strip()
@@ -20,22 +25,31 @@ def search_tour_places(request):
         # 관광지 검색어와 일치하는 관광지 찾기
         matching_places = TourPlace.objects.filter(tour_name__icontains=search_term)
 
-        # 관광지의 search_count 증가
-        TourPlace.objects.filter(tour_name__icontains=search_term).update(search_count=F("search_count") + 1)
+        access_token = request.access_token
+
+        payload = jwt.decode(access_token, settings.SECRET_KEY, algorithms=["HS256"])
+
+        user_id = payload.get("user_id")
+
+        # Retrieve the user from the database
+        try:
+            user = CustomUser.objects.get(user_id=user_id)
+        except CustomUser.DoesNotExist:
+            return JsonResponse({"statusCode": 404, "message": "User not found"}, status=404)  # 바뀐 부분
+
+        matching_place_ids = matching_places.values_list("tour_id", flat=True)
+        tour_id = matching_place_ids[0] if matching_place_ids else None
 
         # 검색어를 TourLog에 저장
-        if request.user.is_authenticated:
-            # 검색어와 일치하는 관광지의 tour_id 찾기
-            matching_place_ids = matching_places.values_list("tour_id", flat=True)
-            tour_id = matching_place_ids[0] if matching_place_ids else None
-
-            TourLog.objects.create(user=request.user, search_text=search_term, tour_id=tour_id)
+        TourLog.objects.create(user=user, search_text=search_term, tour_id=tour_id)
 
         # 관광지 검색 결과 파싱 및 반환
         search_results = []
         for place in matching_places:
             avg_score = Post.objects.filter(tour_id=place.tour_id).aggregate(Avg("post_score"))["post_score__avg"] or 0
             search_count = TourLog.objects.filter(search_text=search_term).count()
+
+            user_liked = "liked" if user_id and Likes.objects.filter(user_id=user_id, tour_id=place.tour_id).exists() else "unliked"
 
             search_results.append(
                 {
@@ -46,6 +60,7 @@ def search_tour_places(request):
                     "tour_viewcnt": place.tour_viewcnt,
                     "avg_score": avg_score,
                     "search_count": search_count,
+                    "tourspot_liked": user_liked,
                 }
             )
 
@@ -60,6 +75,10 @@ def tour_place_detail(request, tour_id, user_id=None):
     if request.method == "GET":
         # 관광지 상세정보 조회
         place = get_object_or_404(TourPlace, tour_id=tour_id)
+
+        search_term = request.GET.get("search", "").strip()
+        # 관광지의 search_count 증가
+        TourPlace.objects.filter(tour_name__icontains=search_term).update(search_count=F("search_count") + 1)
 
         # 관광지 조회수 증가
         place.tour_viewcnt += 1
@@ -84,7 +103,6 @@ def tour_place_detail(request, tour_id, user_id=None):
                 "post_score": post.post_score,  # 게시물 점수 (각 게시물의 점수)
                 "post_img": post.post_img if post.post_img else None,  # 게시물 이미지 URL (이미지가 있는 경우만)
                 "last_modified": post.last_modified.isoformat() if post.last_modified else None,  # 마지막 수정 시간
-                       
             }
             for post in posts
         ]
@@ -206,10 +224,33 @@ def autocomplete_search(request):
 
 def postbytour(request, id):
     post_list = Post.objects.filter(tour_id=id)
-
     serializer = PostSerializer(post_list, many=True)
+
+    post_data = []
+    for post, post_info in zip(post_list, serializer.data):
+        x = post.user_id
+        user = CustomUser.objects.get(user_id=x)
+        nickname = user.nickname
+        profile = user.profile_photo
+
+        img_paths = []
+        img_files = post.post_img  # Assuming post_img is a JSON-like string
+
+        # If post_img is a stringified list, we use json.loads to safely convert it to a Python list
+        if img_files:
+            try:
+                img_paths = json.loads(img_files)  # Convert JSON string to a list
+            except json.JSONDecodeError:
+                img_paths = []  # Handle case where it's not a valid JSON string
+
+        post_info["post_img"] = img_paths  # Add img_paths as a list to post_info
+        post_info["nickname"] = nickname
+        post_info["profile_photo"] = profile
+
+        post_data.append(post_info)
+
     summ = 0
-    cnt = len(post_list)  # post_list의 개수를 바로 cnt에 할당
+    cnt = len(post_list)
 
     # post_score 합산
     for post in post_list:
@@ -221,11 +262,7 @@ def postbytour(request, id):
     response_data = {
         "statusCode": "OK",
         "message": "OK",
-        "content": {
-            "data": serializer.data,
-            "avg_score": avg_score,
-            "count": cnt
-        }
+        "content": {"data": post_data, "avg_score": avg_score, "count": cnt},  # Pass the post data with nickname, profile, and image paths
     }
 
     return JsonResponse(response_data, status=status.HTTP_200_OK, safe=False)

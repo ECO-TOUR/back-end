@@ -1,11 +1,7 @@
-import jwt
 from accounts.models import CustomUser
-from common.decorators import jwt_required
 from community.models import *
-from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.http import JsonResponse
-from django.utils.decorators import method_decorator
 from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -15,21 +11,9 @@ from .serializers import *
 User = get_user_model()
 
 
-@method_decorator(jwt_required, name="dispatch")
 class mypageInguireAPIView(APIView):
-    def get(self, request, *args, **kwargs):
-        # Get the user ID from the request (set by the jwt_required decorator)
-        auth_header = request.headers.get("Authorization")
-
-        if auth_header and auth_header.startswith("Bearer "):
-            access_token = auth_header.split(" ")[1]  # Extract the token after "Bearer "
-        else:
-            # If the header is not present, check the cookie for the access token
-            access_token = request.COOKIES.get("access_token")
-
-        payload = jwt.decode(access_token, settings.SECRET_KEY, algorithms=["HS256"])
-
-        user_id = payload.get("user_id")
+    def get(self, request, user_id, *args, **kwargs):
+        user_id = user_id
 
         # Retrieve the user from the database
         try:
