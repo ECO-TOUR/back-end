@@ -32,43 +32,50 @@ User = get_user_model()
 #     return HttpResponse(response_content)
 
 
+from django.http import JsonResponse
+
 def postlist(request, id):
-    # 모든 게시물을 최근 수정된 순으로 가져오기
-    post_list = Post.objects.all().order_by("-last_modified")
+    # GET 요청만 처리
+    if request.method == "GET":
+        # 모든 게시물을 최근 수정된 순으로 가져오기
+        post_list = Post.objects.all().order_by("-last_modified")
 
-    # 게시물 리스트를 직렬화
-    serializer = PostSerializer(post_list, many=True)
+        # 게시물 리스트를 직렬화
+        serializer = PostSerializer(post_list, many=True)
 
-    # 해당 사용자가 좋아요를 누른 게시물의 ID 리스트 가져오기
-    plike = PostLikes.objects.filter(user_id=id).values_list("post_id", flat=True)
+        # 해당 사용자가 좋아요를 누른 게시물의 ID 리스트 가져오기
+        plike = PostLikes.objects.filter(user_id=id).values_list("post_id", flat=True)
 
-    # 직렬화된 데이터를 리스트로 가져오기
-    d = serializer.data
+        # 직렬화된 데이터를 리스트로 가져오기
+        d = serializer.data
 
-    # 각 게시물에 대해 좋아요 여부를 추가
-    for x in d:
-        # post_img가 있는 경우 처리
-        if x["post_img"]:
-            try:
-                # 이중 이스케이프된 JSON 문자열 처리
-                parsed_img = json.loads(x["post_img"])  # 첫 번째 파싱
-                if isinstance(parsed_img, str):
-                    parsed_img = json.loads(parsed_img)  # 두 번째 파싱
+        # 각 게시물에 대해 좋아요 여부를 추가
+        for x in d:
+            # post_img가 있는 경우 처리
+            if x["post_img"]:
+                try:
+                    # 이중 이스케이프된 JSON 문자열 처리
+                    parsed_img = json.loads(x["post_img"])  # 첫 번째 파싱
+                    if isinstance(parsed_img, str):
+                        parsed_img = json.loads(parsed_img)  # 두 번째 파싱
+                    
+                    x["post_img"] = parsed_img
+                except json.JSONDecodeError as e:
+                    print(f"JSON 파싱 오류: {e}, 대상파일: {x['post_img']}")
+                    x["post_img"] = []  # 파싱 실패 시 기본값 설정
 
-                x["post_img"] = parsed_img
-            except json.JSONDecodeError as e:
-                print(f"JSON 파싱 오류: {e}, 대상파일: {x['post_img']}")
-                x["post_img"] = []  # 파싱 실패 시 기본값 설정
+            if x["post_id"] in plike:  # 게시물 ID가 plike 리스트에 있는지 확인
+                x["like"] = "yes"
+            else:
+                x["like"] = "no"
 
-        if x["post_id"] in plike:  # 게시물 ID가 plike 리스트에 있는지 확인
-            x["like"] = "yes"
-        else:
-            x["like"] = "no"
+        # 응답 데이터 생성
+        response_data = {"statusCode": "OK", "message": "OK", "content": d}
 
-    # 응답 데이터 생성
-    response_data = {"statusCode": "OK", "message": "OK", "content": d}
+        return JsonResponse(response_data, safe=False)
 
-    return JsonResponse(response_data, safe=False)
+    # GET 이외의 요청이 들어왔을 때 405 Method Not Allowed 응답
+    return JsonResponse({"statusCode": "ERROR", "message": "Invalid request method"}, status=405)
 
 
 def tourkeyword(request):
@@ -243,55 +250,52 @@ def update_or_create_rating(user_id, tour_id):
 @api_view(["POST"])
 def write(request):
     if request.method == "POST":
-        try:
-            text = request.data.get("text")
-            img_files = request.FILES.getlist("img")
-            # date = parse_datetime(request.data.get("date"))
-            date = request.data.get("date")
-            likes = 0
-            score = request.data.get("score", 0)
-            hashtag = request.data.get("hashtag")
-            tour_id = request.data.get("tour_id")
-            user_id = request.data.get("user_id", 1)
+        text = request.data.get("text")
+        img_files = request.FILES.getlist("img")
+        # date = parse_datetime(request.data.get("date"))
+        date = request.data.get("date")
+        likes = 0
+        score = request.data.get("score", 0)
+        hashtag = request.data.get("hashtag")
+        tour_id = request.data.get("tour_id")
+        user_id = request.data.get("user_id", 1)
 
-            # Convert date string to datetime object
+        # Convert date string to datetime object
 
-            post = Post.objects.create(
-                post_text=text,
-                post_date=date,
-                post_likes=likes,
-                post_score=score,
-                post_hashtag=hashtag,
-                post_view=0,
-                last_modified=date,
-                tour_id=tour_id,
-                user_id=user_id,
-            )
+        post = Post.objects.create(
+            post_text=text,
+            post_date=date,
+            post_likes=likes,
+            post_score=score,
+            post_hashtag=hashtag,
+            post_view=0,
+            last_modified=date,
+            tour_id=tour_id,
+            user_id=user_id,
+        )
 
-            img_paths = []
-            # Handle the image file upload and store its path
-            if img_files:
-                for i, img_file in enumerate(img_files):
-                    # Define the path where you want to save the image
-                    path = f"uploads/{post.post_id}/{img_file.name}"
-                    # Save the image file to the storage system (e.g., S3)
-                    full_path = default_storage.save(path, img_file)
-                    # Store the file path in the post_img field
-                    img_paths.append(settings.MEDIA_URL.replace("media/", "") + full_path)
+        img_paths = []
+        # Handle the image file upload and store its path
+        if img_files:
+            for i, img_file in enumerate(img_files):
+                # Define the path where you want to save the image
+                path = f"uploads/{post.post_id}/{img_file.name}"
+                # Save the image file to the storage system (e.g., S3)
+                full_path = default_storage.save(path, img_file)
+                # Store the file path in the post_img field
+                img_paths.append(settings.MEDIA_URL.replace("media/", "") + full_path)
                 # Save the post again with the image path
-                # print(img_paths)
-                post.post_img = json.dumps(img_paths)
-                post.save()
+            # print(img_paths)
+            post.post_img = json.dumps(img_paths)
+            post.save()
 
-            PostSerializer(post)
-            update_or_create_rating(user_id, tour_id)
-            # return JsonResponse("ok", safe=False, status=status.HTTP_200_OK)
-            response_data = {"statusCode": "OK", "message": "OK", "content": "OK"}
+        PostSerializer(post)
+        update_or_create_rating(user_id, tour_id)
+        # return JsonResponse("ok", safe=False, status=status.HTTP_200_OK)
+        response_data = {"statusCode": "OK", "message": "OK", "content": "OK"}
 
-            return JsonResponse(response_data, status=status.HTTP_200_OK, safe=False)
-        except Exception:
+        return JsonResponse(response_data, status=status.HTTP_200_OK, safe=False)
 
-            return JsonResponse({"error": "An error occurred."}, status=500)
     else:
         return JsonResponse({"error": "Only POST requests are allowed."}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -335,7 +339,7 @@ def modify(request):
 
             # post_id로 Post 객체 가져오기
             post = get_object_or_404(Post, pk=post_id)
-            print("받은 데이터", data)
+
             # 데이터 업데이트
             post.post_text = data.get("text", post.post_text)
             post.post_likes = data.get("likes", post.post_likes)
@@ -345,13 +349,11 @@ def modify(request):
             post.user_id = data.get("user_id", post.user_id)
             post.tour_id = data.get("tour_id", post.tour_id)
 
-            # 기존 이미지 배열을 old_img에서 가져옴
-            old_imgs = request.POST.getlist("old_img")
-            if not isinstance(old_imgs, list):
-                old_imgs = []  # old_img가 배열이 아닌 경우 빈 배열로 처리
-
-            # old_img 정보를 출력
-            # print("Received old_img:", old_imgs)
+            # 기존 이미지 배열을 로드 (없을 경우 빈 배열로 처리)
+            try:
+                existing_imgs = json.loads(post.post_img) if post.post_img else []
+            except (TypeError, json.JSONDecodeError):
+                existing_imgs = []  # JSON 파싱 오류 시 빈 배열로 초기화
 
             # 이미지 파일 처리
             img_files = request.FILES.getlist("img")
@@ -368,7 +370,7 @@ def modify(request):
                     img_paths.append(settings.MEDIA_URL.replace("media/", "") + full_path)
 
             # 기존 이미지와 새 이미지 배열을 결합
-            combined_imgs = old_imgs + img_paths
+            combined_imgs = existing_imgs + img_paths
 
             # 배열을 JSON으로 직렬화하여 저장
             post.post_img = json.dumps(combined_imgs)
@@ -397,7 +399,6 @@ def modify(request):
 
     else:
         return JsonResponse({"error": "Only POST requests are allowed."}, status=404)
-
 
 def update_or_create_rating3(user_id, tour_id):
     try:
