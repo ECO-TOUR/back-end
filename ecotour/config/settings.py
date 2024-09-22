@@ -202,6 +202,8 @@ CORS_ALLOW_HEADERS = ["accept", "accept-encoding", "authorization", "content-typ
 
 CORS_ALLOW_METHODS = ["DELETE", "GET", "OPTIONS", "PATCH", "POST", "PUT"]
 
+# CORS 설정 추가
+CORS_ALLOW_CREDENTIALS = True  # 크리덴셜 허용
 
 # scope = ""
 # scope_param = f"&scope={scope}" if scope else ""
