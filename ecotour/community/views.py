@@ -32,48 +32,82 @@ User = get_user_model()
 #     return HttpResponse(response_content)
 
 @csrf_exempt
-def postlist(request, id):
-    # GET 요청만 처리
+def postlist(request, user_id):
     if request.method == "GET":
-        # 모든 게시물을 최근 수정된 순으로 가져오기
-        post_list = Post.objects.all().order_by("-last_modified")
+        try:
+            # 모든 게시글을 가져옴. 필요한 경우 필터를 추가할 수 있음
+            posts = Post.objects.all().order_by("-last_modified")
 
-        # 게시물 리스트를 직렬화
-        serializer = PostSerializer(post_list, many=True)
+            content = [
+                {
+                    "post_id": post.post_id,
+                    "post_text": post.post_text,
+                    "user_id": post.user_id,
+                    "post_score": post.post_score,
+                    "post_img": post.post_img,
+                    "last_modified": post.last_modified.isoformat(),
+                    "comm_cnt": post.comm_cnt,
+                    # 사용자가 해당 게시글을 좋아요 했는지 여부 확인
+                    "like": "yes" if Likes.objects.filter(post_id=post.post_id, user_id=user_id, tourspot_liked="liked").exists() else "no",
+                }
+                for post in posts
+            ]
 
-        # 해당 사용자가 좋아요를 누른 게시물의 ID 리스트 가져오기
-        plike = PostLikes.objects.filter(user_id=id).values_list("post_id", flat=True)
+            return JsonResponse({
+                "statusCode": "OK",
+                "message": "OK",
+                "content": content
+            }, status=200)
 
-        # 직렬화된 데이터를 리스트로 가져오기
-        d = serializer.data
+        except Exception as e:
+            logger.error(f"사용자 {user_id}의 게시글 조회 중 오류 발생: {str(e)}")
+            return JsonResponse({"statusCode": 500, "message": "서버 오류입니다.", "error": str(e)}, status=500)
 
-        # 각 게시물에 대해 좋아요 여부를 추가
-        for x in d:
-            # post_img가 있는 경우 처리
-            if x["post_img"]:
-                try:
-                    # 이중 이스케이프된 JSON 문자열 처리
-                    parsed_img = json.loads(x["post_img"])  # 첫 번째 파싱
-                    if isinstance(parsed_img, str):
-                        parsed_img = json.loads(parsed_img)  # 두 번째 파싱
+    return JsonResponse({"statusCode": 400, "message": "잘못된 요청입니다.", "error": "요청 메소드는 GET이어야 합니다."}, status=400)
 
-                    x["post_img"] = parsed_img
-                except json.JSONDecodeError as e:
-                    print(f"JSON 파싱 오류: {e}, 대상파일: {x['post_img']}")
-                    x["post_img"] = []  # 파싱 실패 시 기본값 설정
+# @csrf_exempt
+# def postlist(request, id):
+#     # GET 요청만 처리
+#     if request.method == "GET":
+#         # 모든 게시물을 최근 수정된 순으로 가져오기
+#         post_list = Post.objects.all().order_by("-last_modified")
 
-            if x["post_id"] in plike:  # 게시물 ID가 plike 리스트에 있는지 확인
-                x["like"] = "yes"
-            else:
-                x["like"] = "no"
+#         # 게시물 리스트를 직렬화
+#         serializer = PostSerializer(post_list, many=True)
 
-        # 응답 데이터 생성
-        response_data = {"statusCode": "OK", "message": "OK", "content": d}
+#         # 해당 사용자가 좋아요를 누른 게시물의 ID 리스트 가져오기
+#         plike = PostLikes.objects.filter(user_id=id).values_list("post_id", flat=True)
 
-        return JsonResponse(response_data, safe=False)
+#         # 직렬화된 데이터를 리스트로 가져오기
+#         d = serializer.data
 
-    # GET 이외의 요청이 들어왔을 때 405 Method Not Allowed 응답
-    return JsonResponse({"statusCode": "ERROR", "message": "Invalid request method"}, status=405)
+#         # 각 게시물에 대해 좋아요 여부를 추가
+#         for x in d:
+#             # post_img가 있는 경우 처리
+#             if x["post_img"]:
+#                 try:
+#                     # 이중 이스케이프된 JSON 문자열 처리
+#                     parsed_img = json.loads(x["post_img"])  # 첫 번째 파싱
+#                     if isinstance(parsed_img, str):
+#                         parsed_img = json.loads(parsed_img)  # 두 번째 파싱
+
+#                     x["post_img"] = parsed_img
+#                 except json.JSONDecodeError as e:
+#                     print(f"JSON 파싱 오류: {e}, 대상파일: {x['post_img']}")
+#                     x["post_img"] = []  # 파싱 실패 시 기본값 설정
+
+#             if x["post_id"] in plike:  # 게시물 ID가 plike 리스트에 있는지 확인
+#                 x["like"] = "yes"
+#             else:
+#                 x["like"] = "no"
+
+#         # 응답 데이터 생성
+#         response_data = {"statusCode": "OK", "message": "OK", "content": d}
+
+#         return JsonResponse(response_data, safe=False)
+
+#     # GET 이외의 요청이 들어왔을 때 405 Method Not Allowed 응답
+#     return JsonResponse({"statusCode": "ERROR", "message": "Invalid request method"}, status=405)
 
 
 def tourkeyword(request):
