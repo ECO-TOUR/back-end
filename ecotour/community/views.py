@@ -3,6 +3,7 @@ import json
 from django.contrib.auth import get_user_model
 from django.core.files.storage import default_storage
 from django.db import IntegrityError
+import urllib.parse
 
 # 새로 추가
 from django.db.models import F
