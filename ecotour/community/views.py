@@ -57,7 +57,6 @@ def postlist(request, id):  # 'id' 인자를 추가
             }, status=200)
 
         except Exception as e:
-            logger.error(f"사용자 {id}의 게시글 조회 중 오류 발생: {str(e)}")
             return JsonResponse({"statusCode": 500, "message": "서버 오류입니다.", "error": str(e)}, status=500)
 
     return JsonResponse({"statusCode": 400, "message": "잘못된 요청입니다.", "error": "요청 메소드는 GET이어야 합니다."}, status=400)
