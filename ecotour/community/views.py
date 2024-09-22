@@ -32,12 +32,10 @@ User = get_user_model()
 #     return HttpResponse(response_content)
 
 @csrf_exempt
-def postlist(request, user_id):
+def postlist(request, id):  # 'id' 인자를 추가
     if request.method == "GET":
         try:
-            # 모든 게시글을 가져옴. 필요한 경우 필터를 추가할 수 있음
-            posts = Post.objects.all().order_by("-last_modified")
-
+            posts = Post.objects.filter(user_id=id).order_by("-last_modified")  # 필요한 필터 적용
             content = [
                 {
                     "post_id": post.post_id,
@@ -47,8 +45,7 @@ def postlist(request, user_id):
                     "post_img": post.post_img,
                     "last_modified": post.last_modified.isoformat(),
                     "comm_cnt": post.comm_cnt,
-                    # 사용자가 해당 게시글을 좋아요 했는지 여부 확인
-                    "like": "yes" if Likes.objects.filter(post_id=post.post_id, user_id=user_id, tourspot_liked="liked").exists() else "no",
+                    "like": "yes" if Likes.objects.filter(post_id=post.post_id, user_id=id, tourspot_liked="liked").exists() else "no",
                 }
                 for post in posts
             ]
@@ -60,7 +57,7 @@ def postlist(request, user_id):
             }, status=200)
 
         except Exception as e:
-            logger.error(f"사용자 {user_id}의 게시글 조회 중 오류 발생: {str(e)}")
+            logger.error(f"사용자 {id}의 게시글 조회 중 오류 발생: {str(e)}")
             return JsonResponse({"statusCode": 500, "message": "서버 오류입니다.", "error": str(e)}, status=500)
 
     return JsonResponse({"statusCode": 400, "message": "잘못된 요청입니다.", "error": "요청 메소드는 GET이어야 합니다."}, status=400)
