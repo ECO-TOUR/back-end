@@ -17,7 +17,11 @@ def recommend(user_id):
 
         if matching_tours:
             # Fetch tour names for the matching tour IDs
-            tours.extend(TourPlace.objects.filter(tour_id__in=matching_tours).order_by("-tour_viewcnt").values("tour_name", "tour_id"))
+            tours.extend(
+                TourPlace.objects.filter(tour_id__in=matching_tours)
+                .order_by("-tour_viewcnt")
+                .values("tour_name", "tour_id", "tour_location", "tour_img")
+            )
 
     # Step 3: Limit to 5 unique tours if less than 5 found
     unique_tours = {tour["tour_id"]: tour for tour in tours}.values()  # Using dictionary comprehension to ensure uniqueness
