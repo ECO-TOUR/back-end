@@ -31,7 +31,7 @@ User = get_user_model()
 #         response_content+=p.post_text
 #     return HttpResponse(response_content)
 
-
+@csrf_exempt
 def postlist(request, id):
     # GET 요청만 처리
     if request.method == "GET":
