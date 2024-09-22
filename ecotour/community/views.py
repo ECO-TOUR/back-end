@@ -31,6 +31,11 @@ User = get_user_model()
 #         response_content+=p.post_text
 #     return HttpResponse(response_content)
 
+import json
+import urllib.parse
+from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
+
 @csrf_exempt
 def postlist(request, id):
     # GET 요청만 처리
@@ -57,7 +62,10 @@ def postlist(request, id):
                     if isinstance(parsed_img, str):
                         parsed_img = json.loads(parsed_img)  # 두 번째 파싱
 
-                    x["post_img"] = parsed_img
+                    # 추가된 부분: 유니코드로 인코딩된 URL을 디코딩
+                    decoded_urls = [urllib.parse.unquote(img) for img in parsed_img]
+                    x["post_img"] = decoded_urls
+                    # 주석으로 추가한 부분: 이미지 URL을 디코딩하여 올바른 URL로 변환
                 except json.JSONDecodeError as e:
                     print(f"JSON 파싱 오류: {e}, 대상파일: {x['post_img']}")
                     x["post_img"] = []  # 파싱 실패 시 기본값 설정
@@ -74,6 +82,7 @@ def postlist(request, id):
 
     # GET 이외의 요청이 들어왔을 때 405 Method Not Allowed 응답
     return JsonResponse({"statusCode": "ERROR", "message": "Invalid request method"}, status=405)
+
 
 
 def tourkeyword(request):
