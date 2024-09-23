@@ -3,6 +3,7 @@ import json
 from django.contrib.auth import get_user_model
 from django.core.files.storage import default_storage
 from django.db import IntegrityError
+import urllib.parse
 
 # 새로 추가
 from django.db.models import F
@@ -31,7 +32,16 @@ User = get_user_model()
 #         response_content+=p.post_text
 #     return HttpResponse(response_content)
 
+import json
+import urllib.parse
+from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
 
+import json
+from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
+
+@csrf_exempt
 def postlist(request, id):
     # GET 요청만 처리
     if request.method == "GET":
@@ -57,8 +67,9 @@ def postlist(request, id):
                     if isinstance(parsed_img, str):
                         parsed_img = json.loads(parsed_img)  # 두 번째 파싱
 
+                    # 파이썬에서는 유니코드 이스케이프를 자동으로 처리하므로 추가 변환 필요 없음
                     x["post_img"] = parsed_img
-                except json.JSONDecodeError as e:
+                except (json.JSONDecodeError, TypeError) as e:
                     print(f"JSON 파싱 오류: {e}, 대상파일: {x['post_img']}")
                     x["post_img"] = []  # 파싱 실패 시 기본값 설정
 
