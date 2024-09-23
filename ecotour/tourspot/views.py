@@ -3,6 +3,7 @@ import logging
 
 import jwt
 from accounts.models import CustomUser
+from common.decorators import jwt_required
 from community.models import Post, TourLog, TourPlace
 from community.serializers import *
 from django.db.models import Avg, F
@@ -14,6 +15,7 @@ from django.utils.decorators import method_decorator
 from common.decorators import jwt_required
 
 # 관광지 검색
+
 
 @jwt_required
 def search_tour_places(request):
@@ -266,6 +268,7 @@ def postbytour(request, id):
     }
 
     return JsonResponse(response_data, status=status.HTTP_200_OK, safe=False)
+
 
 # 게시글 관광지 검색
 @csrf_exempt

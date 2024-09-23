@@ -471,6 +471,10 @@ def search_post(request, sorttype, text, id):
     # Search posts by text in post_text
     post_queryset |= Post.objects.filter(post_text__icontains=text)
 
+    tourplace = TourPlace.objects.filter(tour_name__icontains=text)
+    for tour in tourplace:
+        post_queryset |= Post.objects.filter(tour_id=tour.tour_id)
+
     # Search keywords by text
     key_list = TourKeyword.objects.filter(keyword_name__icontains=text)
 
@@ -499,12 +503,25 @@ def search_post(request, sorttype, text, id):
 
     # Serialize the result
     serializer = PostSerializer(post_queryset, many=True)
+    # Process post_img field for each post
+    for post, post_info in zip(post_queryset, serializer.data):
+        img_paths = []
+        img_files = post.post_img  # Assuming post_img is a string representing a JSON list of image URLs
 
-    # return JsonResponse(serializer.data, safe=False, status=status.HTTP_200_OK)
-    # 직렬화된 데이터를 리스트로 가져오기
-    d = serializer.data
+        # If post_img is a valid JSON string, convert it to a list
+        if img_files:
+            try:
+                img_paths = json.loads(img_files)  # Convert JSON string to list
+            except json.JSONDecodeError:
+                img_paths = []  # Handle invalid JSON string case
 
-    response_data = {"statusCode": "OK", "message": "OK", "content": d}
+        # Assuming we want to update the post instance's post_img field to be the parsed list
+        post_info["post_img"] = img_paths
+
+    # Serialize the result
+
+    # Serialize data and prepare response
+    response_data = {"statusCode": "OK", "message": "OK", "content": serializer.data}
 
     return JsonResponse(response_data, status=status.HTTP_200_OK, safe=False)
 
