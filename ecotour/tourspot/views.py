@@ -3,6 +3,7 @@ import logging
 
 import jwt
 from accounts.models import CustomUser
+from common.decorators import jwt_required
 from community.models import Post, TourLog, TourPlace
 from community.serializers import *
 from django.db.models import Avg, F
@@ -14,6 +15,7 @@ from django.utils.decorators import method_decorator
 from common.decorators import jwt_required
 
 # 관광지 검색
+
 
 @jwt_required
 def search_tour_places(request):
@@ -266,3 +268,29 @@ def postbytour(request, id):
     }
 
     return JsonResponse(response_data, status=status.HTTP_200_OK, safe=False)
+
+
+# 게시글 관광지 검색
+@csrf_exempt
+def post_search_tour_places(request, user_id):
+    if request.method == "GET":
+        # 관광지 이름을 쿼리 파라미터로 받음
+        tour_name = request.GET.get("tour_name")
+        if not tour_name:
+            return JsonResponse({"statusCode": 400, "message": "관광지 이름이 유효하지 않습니다."}, status=400)
+
+        # 관광지 이름과 일치하는 관광지 찾기
+        try:
+            place = TourPlace.objects.get(tour_name=tour_name)
+        except TourPlace.DoesNotExist:
+            return JsonResponse({"statusCode": 404, "message": "해당 관광지를 찾을 수 없습니다."}, status=404)
+
+        # 관광지 ID와 이름을 반환
+        return JsonResponse({
+            "statusCode": 200,
+            "tour_id": place.tour_id,
+            "tour_name": place.tour_name
+        }, status=200)
+
+    return JsonResponse({"statusCode": 400, "message": "잘못된 요청입니다.", "error": "요청 메소드는 GET이어야 합니다."}, status=400)
+

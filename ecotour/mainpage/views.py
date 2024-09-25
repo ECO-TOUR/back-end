@@ -78,16 +78,14 @@ def calscore(tour_list):
     return tour_list
 
 
-# 추천 함수
 def recommendation(request, id):
-    tours = recommend(id)
-    tours_list = list(tours.values())  # 추천된 투어 리스트를 받아옴
+    # Get the recommended tours
+    tours_list = recommend(id)
 
-    # 투어 리스트가 3개 이상인 경우, 최대 3개만 처리
-    if len(tours_list) > 3:
-        tours_list = tours_list[:3]
+    # Convert to a list of dictionaries (already a list in this case)
+    tours_list = list(tours_list)
 
-    # 각 투어의 점수와 게시물 개수 계산
+    # Calculate score and count for each tour
     tours_list = calscore(tours_list)
 
     response_data = {"statusCode": "OK", "message": "OK", "content": tours_list}
