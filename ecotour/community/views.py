@@ -1,4 +1,5 @@
 import json
+import hashlib
 
 from django.contrib.auth import get_user_model
 from django.core.files.storage import default_storage
@@ -286,15 +287,18 @@ def write(request):
         img_paths = []
         # Handle the image file upload and store its path
         if img_files:
-            for i, img_file in enumerate(img_files):
-                # Define the path where you want to save the image
-                path = f"uploads/{post.post_id}/{img_file.name}"
-                # Save the image file to the storage system (e.g., S3)
+            for img_file in img_files:
+                # Define the path with a hashed file name instead of the original file name
+                hash_md5 = hashlib.md5()
+                for chunk in img_file.chunks():
+                    hash_md5.update(chunk)
+                file_hash = hash_md5.hexdigest()  # Hash the file content
+
+                # Save the file with the hash as its name
+                path = f"uploads/{post.post_id}/{file_hash}"  # Save with the hash as the name
                 full_path = default_storage.save(path, img_file)
-                # Store the file path in the post_img field
                 img_paths.append(settings.MEDIA_URL.replace("media/", "") + full_path)
-                # Save the post again with the image path
-            # print(img_paths)
+            # Save the post again with the image path
             post.post_img = json.dumps(img_paths)
             post.save()
 
@@ -358,28 +362,35 @@ def modify(request):
             post.user_id = data.get("user_id", post.user_id)
             post.tour_id = data.get("tour_id", post.tour_id)
 
-            # 기존 이미지 배열을 로드 (없을 경우 빈 배열로 처리)
-            try:
-                existing_imgs = json.loads(post.post_img) if post.post_img else []
-            except (TypeError, json.JSONDecodeError):
-                existing_imgs = []  # JSON 파싱 오류 시 빈 배열로 초기화
-
+            # 기존 이미지 배열을 old_img에서 가져옴
+            old_imgs = request.POST.getlist('old_img') 
+            if not isinstance(old_imgs, list):
+                old_imgs = []  # old_img가 배열이 아닌 경우 빈 배열로 처리
+                    
+            # old_img 정보를 출력
+            print("Received old_img:", old_imgs)
+            
             # 이미지 파일 처리
             img_files = request.FILES.getlist("img")
+            print('new_img',img_files)
             img_paths = []
 
             # 새로 업로드된 이미지를 처리하여 경로를 저장
             if img_files:
-                for i, img_file in enumerate(img_files):
-                    # Define the path where you want to save the image
-                    path = f"uploads/{post.post_id}/{img_file.name}"
-                    # Save the image file to the storage system (e.g., S3)
-                    full_path = default_storage.save(path, img_file)
-                    # Store the file path in the img_paths list
-                    img_paths.append(settings.MEDIA_URL.replace("media/", "") + full_path)
+                for img_file in img_files:
+                    # Define the path with a hashed file name instead of the original file name
+                    hash_md5 = hashlib.md5()
+                    for chunk in img_file.chunks():
+                        hash_md5.update(chunk)
+                    file_hash = hash_md5.hexdigest()  # Hash the file content
 
+                    # Save the file with the hash as its name
+                    path = f"uploads/{post.post_id}/{file_hash}"  # Save with the hash as the name
+                    full_path = default_storage.save(path, img_file)
+                    img_paths.append(settings.MEDIA_URL.replace("media/", "") + full_path)
+                
             # 기존 이미지와 새 이미지 배열을 결합
-            combined_imgs = existing_imgs + img_paths
+            combined_imgs = old_imgs + img_paths
 
             # 배열을 JSON으로 직렬화하여 저장
             post.post_img = json.dumps(combined_imgs)
