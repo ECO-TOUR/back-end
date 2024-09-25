@@ -1,4 +1,5 @@
 import json
+import hashlib
 
 from django.contrib.auth import get_user_model
 from django.core.files.storage import default_storage
@@ -286,12 +287,16 @@ def write(request):
         img_paths = []
         # Handle the image file upload and store its path
         if img_files:
-            for i, img_file in enumerate(img_files, start=1):  # start=1 to start numbering from 1
-                # Define the path with a number instead of the original file name
-                path = f"uploads/{post.post_id}/{i}"  # Save as '1', '2', etc.
-                # Save the image file to the storage system (e.g., S3)
+            for img_file in img_files:
+                # Define the path with a hashed file name instead of the original file name
+                hash_md5 = hashlib.md5()
+                for chunk in img_file.chunks():
+                    hash_md5.update(chunk)
+                file_hash = hash_md5.hexdigest()  # Hash the file content
+
+                # Save the file with the hash as its name
+                path = f"uploads/{post.post_id}/{file_hash}"  # Save with the hash as the name
                 full_path = default_storage.save(path, img_file)
-                # Store the file path in the post_img field
                 img_paths.append(settings.MEDIA_URL.replace("media/", "") + full_path)
             # Save the post again with the image path
             post.post_img = json.dumps(img_paths)
@@ -372,12 +377,16 @@ def modify(request):
 
             # 새로 업로드된 이미지를 처리하여 경로를 저장
             if img_files:
-                for i, img_file in enumerate(img_files, start=len(old_imgs)+1):  # start=1 to start numbering from 1
-                    # Define the path with a number instead of the original file name
-                    path = f"uploads/{post.post_id}/{i}"  # Save as '1', '2', etc.
-                    # Save the image file to the storage system (e.g., S3)
+                for img_file in img_files:
+                    # Define the path with a hashed file name instead of the original file name
+                    hash_md5 = hashlib.md5()
+                    for chunk in img_file.chunks():
+                        hash_md5.update(chunk)
+                    file_hash = hash_md5.hexdigest()  # Hash the file content
+
+                    # Save the file with the hash as its name
+                    path = f"uploads/{post.post_id}/{file_hash}"  # Save with the hash as the name
                     full_path = default_storage.save(path, img_file)
-                    # Store the file path in the post_img field
                     img_paths.append(settings.MEDIA_URL.replace("media/", "") + full_path)
                 
             # 기존 이미지와 새 이미지 배열을 결합
