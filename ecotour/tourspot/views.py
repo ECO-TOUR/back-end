@@ -13,10 +13,10 @@ from django.views.decorators.csrf import csrf_exempt
 from rest_framework import status
 from django.utils.decorators import method_decorator
 from common.decorators import jwt_required
+from django.db.models import Q
+
 
 # 관광지 검색
-
-
 @jwt_required
 def search_tour_places(request):
     if request.method == "GET":
@@ -24,8 +24,15 @@ def search_tour_places(request):
         if not search_term:
             return JsonResponse({"statusCode": 400, "message": "검색어가 유효하지 않습니다."}, status=400)
 
-        # 관광지 검색어와 일치하는 관광지 찾기
-        matching_places = TourPlace.objects.filter(tour_name__icontains=search_term)
+        # 검색어가 한 글자일 경우 tour_name만 검색하고, 두 글자 이상일 경우 tour_location도 함께 검색
+        if len(search_term) >= 2:
+            # tour_name은 한 글자만 일치해도 검색, tour_location은 두 글자 이상 일치하는 경우 검색
+            matching_places = TourPlace.objects.filter(
+                Q(tour_name__icontains=search_term) | Q(tour_location__icontains=search_term)
+            )
+        else:
+            # 한 글자인 경우 tour_name만 검색
+            matching_places = TourPlace.objects.filter(tour_name__icontains=search_term)
 
         access_token = request.access_token
 
@@ -33,11 +40,11 @@ def search_tour_places(request):
 
         user_id = payload.get("user_id")
 
-        # Retrieve the user from the database
+        # 데이터베이스에서 사용자 가져오기
         try:
             user = CustomUser.objects.get(user_id=user_id)
         except CustomUser.DoesNotExist:
-            return JsonResponse({"statusCode": 404, "message": "User not found"}, status=404)  # 바뀐 부분
+            return JsonResponse({"statusCode": 404, "message": "User not found"}, status=404)
 
         matching_place_ids = matching_places.values_list("tour_id", flat=True)
         tour_id = matching_place_ids[0] if matching_place_ids else None
@@ -56,7 +63,7 @@ def search_tour_places(request):
             search_results.append(
                 {
                     "tour_id": place.tour_id,
-                    "tour_name": place.tour_name,
+                    "tour_name": place.tour_name,  # 항상 tour_name을 반환
                     "tour_img": place.tour_img,
                     "tour_location": place.tour_location,
                     "tour_viewcnt": place.tour_viewcnt,
