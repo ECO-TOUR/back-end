@@ -73,7 +73,7 @@ def calscore(tour_list):
         count = Post.objects.filter(tour_id=x["tour_id"]).count()
 
         # 결과를 tour_list에 추가
-        x["score"] = score
+        x["score"] = round(score, 1)
         x["count"] = count
     return tour_list
 
