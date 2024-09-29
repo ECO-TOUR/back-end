@@ -660,8 +660,6 @@ def mypostlog(request, id):
 
 
 # 게시글 좋아요
-
-
 @csrf_exempt
 def toggle_post_like(request, user_id):
     if request.method == "POST":
@@ -683,13 +681,18 @@ def toggle_post_like(request, user_id):
             post.post_likes = F("post_likes") - 1
             post.save(update_fields=["post_likes"])
 
+            # 데이터베이스에서 최신 값을 가져와서 post_likes가 0 이상인지 확인
+            post.refresh_from_db()
+            if post.post_likes < 0:
+                post.post_likes = 0
+                post.save(update_fields=["post_likes"])
+
             # 모든 관련 keyword_id에 대해 rating -1
             for tour_keyword in tour_keywords:
                 keyword_rating, _ = KeywordRating.objects.get_or_create(user=user, keyword=tour_keyword.keyword)
-                keyword_rating.rating = max(keyword_rating.rating - 1, 0)  # rating이 1보다 작아지지 않도록 설정
+                keyword_rating.rating = max(keyword_rating.rating - 1, 0)  # rating이 0보다 작아지지 않도록 설정
                 keyword_rating.save()
 
-            post.refresh_from_db()  # 데이터베이스에서 최신 값을 다시 가져옴
             return JsonResponse(
                 {
                     "statusCode": 200,
