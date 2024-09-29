@@ -65,6 +65,8 @@ def search_tour_places(request):
                     "avg_score": avg_score,
                     "search_count": search_count,
                     "tourspot_liked": user_liked,
+                    "tour_x": place.tour_x,  # tour_x 추가
+                    "tour_y": place.tour_y,  # tour_y 추가
                 }
             )
 
