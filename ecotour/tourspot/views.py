@@ -6,14 +6,11 @@ from accounts.models import CustomUser
 from common.decorators import jwt_required
 from community.models import Post, TourLog, TourPlace
 from community.serializers import *
-from django.db.models import Avg, F
+from django.db.models import Avg, F, Q
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404
 from django.views.decorators.csrf import csrf_exempt
 from rest_framework import status
-from django.utils.decorators import method_decorator
-from common.decorators import jwt_required
-from django.db.models import Q
 
 
 # 관광지 검색
@@ -27,9 +24,7 @@ def search_tour_places(request):
         # 검색어가 한 글자일 경우 tour_name만 검색하고, 두 글자 이상일 경우 tour_location도 함께 검색
         if len(search_term) >= 2:
             # tour_name은 한 글자만 일치해도 검색, tour_location은 두 글자 이상 일치하는 경우 검색
-            matching_places = TourPlace.objects.filter(
-                Q(tour_name__icontains=search_term) | Q(tour_location__icontains=search_term)
-            )
+            matching_places = TourPlace.objects.filter(Q(tour_name__icontains=search_term) | Q(tour_location__icontains=search_term))
         else:
             # 한 글자인 경우 tour_name만 검색
             matching_places = TourPlace.objects.filter(tour_name__icontains=search_term)
@@ -267,6 +262,7 @@ def postbytour(request, id):
 
     # cnt가 0일 경우 avg_score는 0으로 처리
     avg_score = summ / cnt if cnt > 0 else 0
+    avg_score=round(avg_score, 1)
 
     response_data = {
         "statusCode": "OK",
@@ -293,11 +289,6 @@ def post_search_tour_places(request, user_id):
             return JsonResponse({"statusCode": 404, "message": "해당 관광지를 찾을 수 없습니다."}, status=404)
 
         # 관광지 ID와 이름을 반환
-        return JsonResponse({
-            "statusCode": 200,
-            "tour_id": place.tour_id,
-            "tour_name": place.tour_name
-        }, status=200)
+        return JsonResponse({"statusCode": 200, "tour_id": place.tour_id, "tour_name": place.tour_name}, status=200)
 
     return JsonResponse({"statusCode": 400, "message": "잘못된 요청입니다.", "error": "요청 메소드는 GET이어야 합니다."}, status=400)
-
