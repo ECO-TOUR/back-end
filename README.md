@@ -1,3 +1,6 @@
+<img width="800" height="3000" alt="Image" src="https://github.com/user-attachments/assets/8eb01f12-4816-4b2c-b290-10616d18978c" />
+
+
 # back-end
 
 ## 🔍 백엔드 초기 환경세팅
